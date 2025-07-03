@@ -4,11 +4,11 @@ from google.oauth2.service_account import Credentials
 import pandas as pd
 import openai
 
-# ★ここをあなたのOpenAI APIキーで書き換えてください（APIキー取得方法は下部参照）
+# OpenAI APIキーはSecretsから
 OPENAI_API_KEY = st.secrets["openai_api_key"]
 
-# Google Sheetsの設定
-SERVICE_ACCOUNT_FILE = "contents_service_account.json"
+# Google Sheets認証情報もSecretsから
+SERVICE_ACCOUNT_INFO = st.secrets["google_service_account"]  # Secrets名は後述
 SPREADSHEET_ID = "1PFDBuFuqxC4OWMCPjErP8uYYRovE55t-0oWsXNMCMqc"
 SHEET_BASE_URL = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/edit#gid="
 
