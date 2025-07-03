@@ -9,7 +9,7 @@ OPENAI_API_KEY = st.secrets["openai_api_key"]
 
 # Google Sheets認証情報もSecretsから
 SERVICE_ACCOUNT_INFO = st.secrets["google_service_account"]  # Secrets名は後述
-SPREADSHEET_ID = "1PFDBuFuqxC4OWMCPjErP8uYYRovE55t-0oWsXNMCMqc"
+SPREADSHEET_ID = "15cpB2PddSHA6s_dNOuPzaTshMq9yE0WPVD8dqj_TXag"
 SHEET_BASE_URL = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/edit#gid="
 
 # 認証
