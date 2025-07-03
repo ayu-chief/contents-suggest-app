@@ -1,0 +1,10 @@
+# Google認証ファイルをアップしない
+*.json
+
+# Pythonの一時ファイル
+__pycache__/
+*.pyc
+
+# エディタやOSの設定ファイル
+.vscode/
+.DS_Store
