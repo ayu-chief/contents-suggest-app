@@ -10,12 +10,12 @@ OPENAI_API_KEY = st.secrets["openai_api_key"]
 # Google Sheets認証情報もSecretsから
 SERVICE_ACCOUNT_INFO = st.secrets["google_service_account"]  # Secrets名は後述
 SPREADSHEET_ID = "1PFDBuFuqxC4OWMCPjErP8uYYRovE55t-0oWsXNMCMqc"
-SHEET_BASE_URL = f"https://docs.google.com/spreadsheets/d/15cpB2PddSHA6s_dNOuPzaTshMq9yE0WPVD8dqj_TXag/edit#gid="
+SHEET_BASE_URL = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/edit#gid="
 
 # 認証
 scopes = ["https://www.googleapis.com/auth/spreadsheets",
           "https://www.googleapis.com/auth/drive"]
-creds = Credentials.from_service_account_info(SERVICE_ACCOUNT_FILE, scopes=scopes)
+creds = Credentials.from_service_account_info(SERVICE_ACCOUNT_INFO, scopes=scopes)
 gc = gspread.authorize(creds)
 
 # 全シートのデータ取得
