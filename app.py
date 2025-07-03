@@ -76,7 +76,7 @@ def categorize_content(content_name, theme):
     return cat1, cat2
 
 # UIここから
-st.title("おすすめ活動サジェストAI")
+st.title("おすすめ活動サジェスト")
 
 user_input = st.text_input("どんな活動を探していますか？（例：自然系、小学生向け、運動など）")
 search_btn = st.button("おすすめを表示")
