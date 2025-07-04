@@ -41,47 +41,49 @@ import time
 def create_d7d17_index_sheet():
     INDEX_SHEET_NAME = "目次_D7D17"
     sh = gc.open_by_key(SPREADSHEET_ID)
-    # 目次シートがあれば既存リスト取得
     try:
         ws_index = sh.worksheet(INDEX_SHEET_NAME)
-        # 目次全体をDataFrameに
         all_values = ws_index.get_all_values()
-        df_index = pd.DataFrame(all_values[1:], columns=all_values[0])  # 1行目はヘッダー
+        df_index = pd.DataFrame(all_values[1:], columns=all_values[0])  # header行除く
     except Exception:
         ws_index = None
         df_index = pd.DataFrame(columns=["シート名", "D7", "D17"])
 
     sheets = sh.worksheets()
-    updated_count = 0
-    added_count = 0
+    updated_rows = []
+    added_rows = []
+    # シート名→行index辞書
+    title_to_idx = {row["シート名"]: idx for idx, row in df_index.iterrows()}
 
-    # 各シートを目次に反映
     for ws in sheets:
         if ws.title == INDEX_SHEET_NAME:
             continue
         d7 = safe_acell(ws, "D7")
         d17 = safe_acell(ws, "D17")
 
-        if ws.title in df_index["シート名"].values:
-            # 既存行のうちB/Cどちらか空欄なら上書き
-            idx = df_index.index[df_index["シート名"] == ws.title][0]
+        if ws.title in title_to_idx:
+            idx = title_to_idx[ws.title]
+            # どちらか空欄なら行リストに保存
             if (not df_index.loc[idx, "D7"]) or (not df_index.loc[idx, "D17"]):
-                ws_index.update_acell(f"B{idx+2}", d7)
-                ws_index.update_acell(f"C{idx+2}", d17)
-                updated_count += 1
+                df_index.at[idx, "D7"] = d7
+                df_index.at[idx, "D17"] = d17
+                updated_rows.append(idx)
         else:
-            # 新規（末尾追加）
+            # 新規追加
             df_index.loc[len(df_index)] = [ws.title, d7, d17]
-            added_count += 1
-            time.sleep(2.0)
+            added_rows.append(len(df_index))
 
-    # 新規行だけまとめて一括追記
-    if added_count > 0:
-        start_row = len(df_index) - added_count + 2  # header+既存
-        new_rows = df_index.tail(added_count).values.tolist()
-        ws_index.update(f"A{start_row}:C{start_row+added_count-1}", new_rows)
-
-    return updated_count, added_count
+    # まとめて更新（全体一括上書き！）
+    if ws_index:
+        values = [df_index.columns.tolist()] + df_index.values.tolist()
+        ws_index.update(f"A1:C{len(values)}", values)
+    else:
+        # なければ新規作成
+        ws_index = sh.add_worksheet(title=INDEX_SHEET_NAME, rows=len(df_index)+10, cols=3)
+        values = [df_index.columns.tolist()] + df_index.values.tolist()
+        ws_index.update(f"A1:C{len(values)}", values)
+    
+    return len(updated_rows), len(added_rows)
 
 # --- 管理者用：AI分類→保存のボタン ---
 with st.expander("⚡ 管理者メニュー：AI分類ラベルを保存", expanded=True):
