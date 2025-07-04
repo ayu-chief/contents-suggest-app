@@ -182,7 +182,7 @@ with st.expander("⚡ 管理者メニュー：目次シートAI分類", expanded
         ws_index.update("D2", [[cat1]])
         ws_index.update("E2", [[cat2]])
         st.success(f"2行目: {sheet_name} の分類を書き込みました")
-    except Exception as e:
+       except Exception as e:
         st.error(f"エラー: {e}")
           
 # --- サジェスト用データ読込 ---
