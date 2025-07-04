@@ -3,6 +3,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 import pandas as pd
 import openai
+import time
 
 # OpenAI APIキーはSecretsから
 OPENAI_API_KEY = st.secrets["openai_api_key"]
@@ -22,37 +23,19 @@ gc = gspread.authorize(creds)
 # --- OpenAI新APIクライアントを1回だけ作成 ---
 client = openai.OpenAI(api_key=OPENAI_API_KEY)
 
-# --- シートからコンテンツ情報を取得 ---
-@st.cache_data
-def load_all_contents():
-    sh = gc.open_by_key(SPREADSHEET_ID)
-    sheets = sh.worksheets()
-    data = []
-    for ws in sheets:
-        sheet_name = ws.title
-        gid = ws.id
-        def safe_acell(cell):
-            try:
-                return ws.acell(cell).value or ""
-            except Exception:
-                return ""
-        b5 = safe_acell("B5")
-        b15 = safe_acell("B15")
-        b17 = safe_acell("B17")
-        summary = f"{b5} {b15} {b17}"
-        data.append({
-            "シート名": sheet_name,
-            "gid": gid,
-            "B5": b5,
-            "B15": b15,
-            "B17": b17,
-            "summary": summary
-        })
-    return pd.DataFrame(data)
+# --- ヘルパー関数 ---
+def safe_acell(ws, cell):
+    try:
+        return ws.acell(cell).value or ""
+    except Exception:
+        return ""
 
-contents_df = load_all_contents()
+def set_acell(ws, cell, value):
+    try:
+        ws.update_acell(cell, value)
+    except Exception as e:
+        print(f"{ws.title} {cell}書き込み失敗: {e}")
 
-# --- AIで2層分類（OpenAI新API） ---
 def categorize_content(content_name, summary):
     prompt = f"""
 あなたは学校教育アクティビティの分類の専門家です。
@@ -77,70 +60,93 @@ def categorize_content(content_name, summary):
         cat1, cat2 = res, ""
     return cat1, cat2
 
-def safe_acell(ws, cell):
-    try:
-        return ws.acell(cell).value or ""
-    except Exception:
-        return ""
+def categorize_content_with_retry(content_name, summary, retries=5, wait_sec=10):
+    for attempt in range(retries):
+        try:
+            return categorize_content(content_name, summary)
+        except openai.RateLimitError:
+            if attempt < retries - 1:
+                st.warning(f"OpenAIの利用制限。{wait_sec}秒待機してリトライ({attempt+1}/{retries})...")
+                time.sleep(wait_sec)
+            else:
+                st.error("リトライ上限でスキップします。")
+                return "", ""
 
-def set_acell(ws, cell, value):
-    try:
-        ws.update_acell(cell, value)
-    except Exception as e:
-        print(f"{ws.title} {cell}書き込み失敗: {e}")
+# --- 新しいシートのみAI分類＆結果をB23/B24に保存 ---
+def ai_categorize_new_sheets():
+    sh = gc.open_by_key(SPREADSHEET_ID)
+    worksheets = sh.worksheets()
+    categorized = 0
+    for ws in worksheets:
+        b23 = safe_acell(ws, "B23")
+        b24 = safe_acell(ws, "B24")
+        if not b23 or not b24:
+            b5 = safe_acell(ws, "B5")
+            b15 = safe_acell(ws, "B15")
+            b17 = safe_acell(ws, "B17")
+            summary = f"{b5} {b15} {b17}"
+            cat1, cat2 = categorize_content_with_retry(ws.title, summary)
+            set_acell(ws, "B23", cat1)
+            set_acell(ws, "B24", cat2)
+            categorized += 1
+            time.sleep(2)  # さらに余裕をもって待機
+    return categorized
 
-# --- ここがメイン分類処理 ---
-sh = gc.open_by_key(SPREADSHEET_ID)
-worksheets = sh.worksheets()
-for ws in worksheets:
-    b23 = safe_acell(ws, "B23")
-    b24 = safe_acell(ws, "B24")
-    if not b23 or not b24:
-        # 分類対象
+# --- StreamlitのUI: AI分類実行ボタン ---
+with st.expander("⚡ 新しいシートのみAI分類を実行（管理者用）"):
+    if st.button("新規シートだけAI分類してB23/B24に保存する"):
+        with st.spinner("AI分類を実行中...（しばらくお待ちください）"):
+            n = ai_categorize_new_sheets()
+        st.success(f"{n}件の新しいシートにAI分類を保存しました。")
+
+# --- サジェスト用データ読込 ---
+@st.cache_data
+def load_contents_for_search():
+    sh = gc.open_by_key(SPREADSHEET_ID)
+    sheets = sh.worksheets()
+    data = []
+    for ws in sheets:
+        sheet_name = ws.title
+        gid = ws.id
+        cat1 = safe_acell(ws, "B23")
+        cat2 = safe_acell(ws, "B24")
         b5 = safe_acell(ws, "B5")
         b15 = safe_acell(ws, "B15")
         b17 = safe_acell(ws, "B17")
-        summary = f"{b5} {b15} {b17}"
-        cat1, cat2 = categorize_content(ws.title, summary)
-        set_acell(ws, "B23", f"第一階層: {cat1}")
-        set_acell(ws, "B24", f"第二階層: {cat2}")
-        time.sleep(2)  # rate limit回避（必要に応じて調整）
-    else:
-        # すでに分類済み（何もしない）
-        continue
+        data.append({
+            "シート名": sheet_name,
+            "gid": gid,
+            "B5": b5,
+            "B15": b15,
+            "B17": b17,
+            "cat1": cat1,
+            "cat2": cat2,
+        })
+    return pd.DataFrame(data)
 
-# --- UIここから ---
+contents_df = load_contents_for_search()
+
+# --- サジェスト検索UI ---
 st.title("おすすめ活動サジェスト")
 user_input = st.text_input("どんな活動を探していますか？（例：自然系、小学生向け、運動など）")
 search_btn = st.button("おすすめを表示")
 
 if search_btn and user_input:
     recs = []
-    # 必要なら件数を制限: contents_df.head(5).iterrows() など
-    for i, row in contents_df.iterrows():
-        # AI分類（最初の5件などに制限推奨）
-        cat1, cat2 = categorize_content(row["シート名"], row["summary"])
-        # 部分一致フィルタ
-        cond = (user_input in cat1) or (user_input in cat2) or \
-               (user_input in str(row["summary"])) or (user_input in str(row["シート名"]))
+    for _, row in contents_df.iterrows():
+        cond = (user_input in str(row["cat1"])) or (user_input in str(row["cat2"])) \
+             or (user_input in str(row["B5"])) or (user_input in str(row["B15"])) or (user_input in str(row["B17"])) \
+             or (user_input in str(row["シート名"]))
         if cond:
-            recs.append({
-                "コンテンツ名": row["シート名"],
-                "B5": row["B5"],
-                "B15": row["B15"],
-                "B17": row["B17"],
-                "gid": row["gid"],
-                "カテゴリー": f"{cat1} > {cat2}",
-            })
-
+            recs.append(row)
     top3 = recs[:3]
     others = recs[3:10]
-
     if top3:
         st.subheader("おすすめコンテンツ")
         for rec in top3:
-            st.write(f'### {rec["コンテンツ名"]}')
-            st.write(f'カテゴリー: {rec["カテゴリー"]}')
+            st.write(f'### {rec["シート名"]}')
+            st.write(f'第一階層: {rec["cat1"]}')
+            st.write(f'第二階層: {rec["cat2"]}')
             st.write(f'B5: {rec["B5"]}')
             st.write(f'B15: {rec["B15"]}')
             st.write(f'B17: {rec["B17"]}')
@@ -149,10 +155,8 @@ if search_btn and user_input:
             st.write("---")
         if others:
             st.subheader("その他の近いコンテンツ")
-            st.write("、".join([rec["コンテンツ名"] for rec in others]))
+            st.write("、".join([rec["シート名"] for rec in others]))
     else:
         st.info("条件に合うおすすめが見つかりませんでした。検索ワードを変えてみてください。")
-
 else:
     st.write("上の検索欄に希望を入力して「おすすめを表示」ボタンを押してください。")
-
