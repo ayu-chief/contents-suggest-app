@@ -43,33 +43,6 @@ def categorize_content(content_name, summary):
         cat1, cat2 = res, ""
     return cat1, cat2
 
-categories = []
-worksheets = gc.open_by_key(SPREADSHEET_ID).worksheets()
-with st.spinner("分類中...（OpenAI APIを利用）"):
-    for ws in worksheets:
-        content_name = ws.title
-        def safe_acell(ws, cell):
-            try:
-                return ws.acell(cell).value or ""
-            except Exception:
-                return ""
-        b5 = safe_acell(ws, "B5")
-        b15 = safe_acell(ws, "B15")
-        b17 = safe_acell(ws, "B17")
-        summary = f"{b5} {b15} {b17}"
-        cat1, cat2 = categorize_content(content_name, summary)
-        categories.append({
-            "コンテンツ名": content_name,
-            "B5": b5,
-            "B15": b15,
-            "B17": b17,
-            "第一階層": cat1,
-            "第二階層": cat2
-        })
-categories_df = pd.DataFrame(categories)
-st.subheader("各コンテンツの二層分類一覧")
-st.dataframe(categories_df)
-
 # UIここから
 st.title("おすすめ活動サジェスト")
 
