@@ -138,19 +138,27 @@ def categorize_d7d17_index_sheet_only_empty():
     if len(records) < 2:
         return 0
     updated = 0
-    for i, row in enumerate(records[1:], start=2):  # 2行目から
-        sheet_name = row[0] if len(row) > 0 else ""
-        d7 = row[1] if len(row) > 1 else ""
-        d17 = row[2] if len(row) > 2 else ""
-        cat1 = row[3] if len(row) > 3 else ""
-        cat2 = row[4] if len(row) > 4 else ""
-        # D列・E列が両方空欄だけ分類（どちらか埋まっていればスキップ）
+    # 既存値のまま配列化
+    all_values = records
+    # 必要に応じてD列・E列を拡張
+    for row in all_values:
+        while len(row) < 5:
+            row.append("")
+    # 書き換えリスト用意
+    for i, row in enumerate(all_values[1:], start=2):  # 2行目から
+        sheet_name = row[0]
+        d7 = row[1]
+        d17 = row[2]
+        cat1 = row[3]
+        cat2 = row[4]
         if not cat1 and not cat2:
             cat1, cat2 = categorize_content_for_index_with_retry(sheet_name, d7, d17)
-            ws_index.update(f"D{i}", cat1)
-            ws_index.update(f"E{i}", cat2)
-            time.sleep(1.5)  # レート制限回避
+            all_values[i-1][3] = cat1
+            all_values[i-1][4] = cat2
+            time.sleep(1.5)
             updated += 1
+    # 一括アップロード
+    ws_index.update(f"A1:E{len(all_values)}", all_values)
     return updated
 
 # --- 管理者メニュー Streamlit ボタン ---
