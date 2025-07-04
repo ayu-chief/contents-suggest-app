@@ -77,6 +77,38 @@ def categorize_content(content_name, summary):
         cat1, cat2 = res, ""
     return cat1, cat2
 
+def safe_acell(ws, cell):
+    try:
+        return ws.acell(cell).value or ""
+    except Exception:
+        return ""
+
+def set_acell(ws, cell, value):
+    try:
+        ws.update_acell(cell, value)
+    except Exception as e:
+        print(f"{ws.title} {cell}書き込み失敗: {e}")
+
+# --- ここがメイン分類処理 ---
+sh = gc.open_by_key(SPREADSHEET_ID)
+worksheets = sh.worksheets()
+for ws in worksheets:
+    b23 = safe_acell(ws, "B23")
+    b24 = safe_acell(ws, "B24")
+    if not b23 or not b24:
+        # 分類対象
+        b5 = safe_acell(ws, "B5")
+        b15 = safe_acell(ws, "B15")
+        b17 = safe_acell(ws, "B17")
+        summary = f"{b5} {b15} {b17}"
+        cat1, cat2 = categorize_content(ws.title, summary)
+        set_acell(ws, "B23", f"第一階層: {cat1}")
+        set_acell(ws, "B24", f"第二階層: {cat2}")
+        time.sleep(2)  # rate limit回避（必要に応じて調整）
+    else:
+        # すでに分類済み（何もしない）
+        continue
+
 # --- UIここから ---
 st.title("おすすめ活動サジェスト")
 user_input = st.text_input("どんな活動を探していますか？（例：自然系、小学生向け、運動など）")
