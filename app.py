@@ -36,6 +36,30 @@ def set_acell(ws, cell, value):
     except Exception as e:
         print(f"{ws.title} {cell}書き込み失敗: {e}")
 
+def create_b5b7_index_sheet():
+    INDEX_SHEET_NAME = "目次_B5B7"
+    sh = gc.open_by_key(SPREADSHEET_ID)
+    # 既存シートがあれば削除
+    try:
+        sh.del_worksheet(sh.worksheet(INDEX_SHEET_NAME))
+    except Exception:
+        pass
+    # データ収集
+    rows = []
+    for ws in sh.worksheets():
+        if ws.title == INDEX_SHEET_NAME:
+            continue
+        sheet_name = ws.title
+        b5 = safe_acell(ws, "B5")
+        b7 = safe_acell(ws, "B7")
+        rows.append([sheet_name, b5, b7])
+    # 新しいシート作成＆書き込み
+    ws_index = sh.add_worksheet(title=INDEX_SHEET_NAME, rows=len(rows)+10, cols=3)
+    ws_index.update("A1", [["シート名", "B5", "B7"]])
+    if rows:
+        ws_index.update("A2", rows)
+    return len(rows)
+
 def categorize_content(content_name, summary):
     prompt = f"""
 あなたは学校教育アクティビティの分類の専門家です。
@@ -118,6 +142,12 @@ with st.expander("⚡ 管理者メニュー：AI分類ラベルを保存", expan
             else:
                 st.info(f"{ws.title} はすでに分類済みなのでスキップ")
         st.success(f"{count}件のシートにAI分類ラベルを保存しました！")
+              
+with st.expander("⚡ 管理者メニュー：AI分類ラベルを保存", expanded=True):
+    # ...既存のボタン...
+    if st.button("目次_B5B7シートを作成/更新（全シートB5・B7一覧）"):
+        n = create_b5b7_index_sheet()
+        st.success(f"目次_B5B7シートを作成・更新しました！（{n}件）")
 
 # --- サジェスト用データ読込 ---
 @st.cache_data
