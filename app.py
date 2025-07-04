@@ -32,7 +32,6 @@ def categorize_content(content_name, summary):
         model="gpt-3.5-turbo",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.2,
-        api_key=OPENAI_API_KEY,
     )
     res = response.choices[0].message.content.strip()
     if ">" in res:
