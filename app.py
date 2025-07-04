@@ -87,6 +87,7 @@ with st.expander("⚡ 管理者メニュー：AI分類ラベルを保存", expan
         upd, add = create_d7d17_index_sheet()
         st.success(f"目次_D7D17シートを作成・更新しました！空欄補完: {upd}件、新規追加: {add}件")
 
+# --- AI分類: 通常版 ---
 def categorize_content_for_index(sheet_name, d7, d17):
     prompt = f"""
 あなたは学校教育アクティビティの分類の専門家です。
@@ -112,6 +113,23 @@ D17: {d17}
         cat1, cat2 = res, ""
     return cat1, cat2
 
+# --- AI分類: リトライ付き ---
+def categorize_content_for_index_with_retry(sheet_name, d7, d17, retries=5, wait_sec=10):
+    for attempt in range(retries):
+        try:
+            return categorize_content_for_index(sheet_name, d7, d17)
+        except openai.RateLimitError:
+            if attempt < retries - 1:
+                st.warning(f"OpenAIの利用制限。{wait_sec}秒待機してリトライ({attempt+1}/{retries})...")
+                time.sleep(wait_sec)
+            else:
+                st.error("リトライ上限でスキップします。")
+                return "", ""
+        except Exception as e:
+            st.error(f"予期せぬエラー: {e}")
+            return "", ""
+
+# --- 目次_D7D17シートの空欄にAI分類（二層）を追記 ---
 def categorize_d7d17_index_sheet_only_empty():
     INDEX_SHEET_NAME = "目次_D7D17"
     sh = gc.open_by_key(SPREADSHEET_ID)
@@ -128,7 +146,7 @@ def categorize_d7d17_index_sheet_only_empty():
         cat2 = row[4] if len(row) > 4 else ""
         # D列・E列が両方空欄だけ分類（どちらか埋まっていればスキップ）
         if not cat1 and not cat2:
-            cat1, cat2 = categorize_content_for_index(sheet_name, d7, d17)
+            cat1, cat2 = categorize_content_for_index_with_retry(sheet_name, d7, d17)
             ws_index.update(f"D{i}", cat1)
             ws_index.update(f"E{i}", cat2)
             time.sleep(1.5)  # レート制限回避
