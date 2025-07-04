@@ -96,53 +96,7 @@ def categorize_content_with_retry(content_name, summary, retries=5, wait_sec=10)
                 st.error("リトライ上限でスキップします。")
                 return "", ""
 
-# --- 新しいシートのみAI分類＆結果をB23/B24に保存 ---
-def ai_categorize_new_sheets():
-    sh = gc.open_by_key(SPREADSHEET_ID)
-    worksheets = sh.worksheets()
-    categorized = 0
-    for ws in worksheets:
-        b23 = safe_acell(ws, "B23")
-        b24 = safe_acell(ws, "B24")
-        if not b23 or not b24:
-            d5 = safe_acell(ws, "D5")
-            d15 = safe_acell(ws, "D15")
-            d17 = safe_acell(ws, "D17")
-            summary = f"{d5} {d15} {d17}"
-            cat1, cat2 = categorize_content_with_retry(ws.title, summary)
-            set_acell(ws, "B23", cat1)
-            set_acell(ws, "B24", cat2)
-            categorized += 1
-            time.sleep(2)  # さらに余裕をもって待機
-    return categorized
-
-# --- 管理者用：AI分類→B23/B24保存のボタン ---
-with st.expander("⚡ 管理者メニュー：AI分類ラベルを保存", expanded=True):
-    if st.button("全シートでAI分類→B23/B24に保存（本番実行）"):
-        sh = gc.open_by_key(SPREADSHEET_ID)
-        worksheets = sh.worksheets()
-        count = 0
-        for ws in worksheets:
-            b23 = safe_acell(ws, "B23")
-            b24 = safe_acell(ws, "B24")
-            # デバッグ：現在のB23/B24を表示
-            st.write(f"{ws.title} B23:『{b23}』 B24:『{b24}』")
-            if (not b23 or b23.strip() == "") or (not b24 or b24.strip() == ""):
-                d5 = safe_acell(ws, "D5")
-                d15 = safe_acell(ws, "D15")
-                d17 = safe_acell(ws, "D17")
-                summary = f"{d5} {d15} {d17}"
-                cat1, cat2 = categorize_content_with_retry(ws.title, summary)
-                st.write(f"→AI分類結果: {cat1} | {cat2}")
-                set_acell(ws, "B23", cat1)
-                set_acell(ws, "B24", cat2)
-                st.success(f"{ws.title} にAI分類を書き込みました")
-                count += 1
-                time.sleep(2)
-            else:
-                st.info(f"{ws.title} はすでに分類済みなのでスキップ")
-        st.success(f"{count}件のシートにAI分類ラベルを保存しました！")
-              
+# --- 管理者用：AI分類→保存のボタン ---
 with st.expander("⚡ 管理者メニュー：AI分類ラベルを保存", expanded=True):
     # ...既存のボタン...
     if st.button("目次_B5B7シートを作成/更新（全シートD5・D7一覧）"):
@@ -158,19 +112,13 @@ def load_contents_for_search():
     for ws in sheets:
         sheet_name = ws.title
         gid = ws.id
-        cat1 = safe_acell(ws, "B23")
-        cat2 = safe_acell(ws, "B24")
         d5 = safe_acell(ws, "D5")
-        d15 = safe_acell(ws, "D15")
-        d17 = safe_acell(ws, "D17")
+        d7 = safe_acell(ws, "D7")
         data.append({
             "シート名": sheet_name,
             "gid": gid,
             "D5": d5,
-            "D15": d15,
-            "D17": d17,
-            "cat1": cat1,
-            "cat2": cat2,
+            "D7": d7,
         })
     return pd.DataFrame(data)
 
