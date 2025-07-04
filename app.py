@@ -19,6 +19,39 @@ scopes = ["https://www.googleapis.com/auth/spreadsheets",
 creds = Credentials.from_service_account_info(SERVICE_ACCOUNT_INFO, scopes=scopes)
 gc = gspread.authorize(creds)
 
+# 全シートのデータ取得
+@st.cache_data
+def load_all_contents():
+    sh = gc.open_by_key(SPREADSHEET_ID)
+    sheets = sh.worksheets()
+    all_contents = []
+    for ws in sheets:
+        try:
+            df = pd.DataFrame(ws.get_all_records())
+            if len(df) == 0:
+                continue
+            df["シート名"] = ws.title
+            df["gid"] = ws.id
+            all_contents.append(df)
+        except Exception as e:
+            continue
+    if all_contents:
+        return pd.concat(all_contents, ignore_index=True)
+    else:
+        return pd.DataFrame()
+
+contents_df = load_all_contents()
+# ここでデータの中身を画面でチェック！
+st.dataframe(contents_df)
+
+# テーマ列（例：B7セル）の取得補助関数
+def get_b7_value(ws):
+    try:
+        value = ws.acell("B7").value
+        return value if value else ""
+    except Exception:
+        return ""
+
 def categorize_content(content_name, summary):
     prompt = f"""
 あなたは学校教育アクティビティの分類の専門家です。
