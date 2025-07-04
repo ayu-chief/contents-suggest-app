@@ -36,7 +36,7 @@ def set_acell(ws, cell, value):
     except Exception as e:
         print(f"{ws.title} {cell}書き込み失敗: {e}")
 
-def create_b5b7_index_sheet():
+def create_d5d7_index_sheet():
     INDEX_SHEET_NAME = "目次_D5D7"
     sh = gc.open_by_key(SPREADSHEET_ID)
     # 既存シートがあれば削除
@@ -50,8 +50,8 @@ def create_b5b7_index_sheet():
         if ws.title == INDEX_SHEET_NAME:
             continue
         sheet_name = ws.title
-        b5 = safe_acell(ws, "D5")
-        b7 = safe_acell(ws, "D7")
+        D5 = safe_acell(ws, "D5")
+        D7 = safe_acell(ws, "D7")
         rows.append([sheet_name, d5, d7])
     # 新しいシート作成＆書き込み
     ws_index = sh.add_worksheet(title=INDEX_SHEET_NAME, rows=len(rows)+10, cols=3)
@@ -105,9 +105,9 @@ def ai_categorize_new_sheets():
         b23 = safe_acell(ws, "B23")
         b24 = safe_acell(ws, "B24")
         if not b23 or not b24:
-            b5 = safe_acell(ws, "D5")
-            b15 = safe_acell(ws, "D15")
-            b17 = safe_acell(ws, "D17")
+            d5 = safe_acell(ws, "D5")
+            d15 = safe_acell(ws, "D15")
+            d17 = safe_acell(ws, "D17")
             summary = f"{d5} {d15} {d17}"
             cat1, cat2 = categorize_content_with_retry(ws.title, summary)
             set_acell(ws, "B23", cat1)
@@ -128,9 +128,9 @@ with st.expander("⚡ 管理者メニュー：AI分類ラベルを保存", expan
             # デバッグ：現在のB23/B24を表示
             st.write(f"{ws.title} B23:『{b23}』 B24:『{b24}』")
             if (not b23 or b23.strip() == "") or (not b24 or b24.strip() == ""):
-                b5 = safe_acell(ws, "D5")
-                b15 = safe_acell(ws, "D15")
-                b17 = safe_acell(ws, "D17")
+                d5 = safe_acell(ws, "D5")
+                d15 = safe_acell(ws, "D15")
+                d17 = safe_acell(ws, "D17")
                 summary = f"{d5} {d15} {d17}"
                 cat1, cat2 = categorize_content_with_retry(ws.title, summary)
                 st.write(f"→AI分類結果: {cat1} | {cat2}")
@@ -160,15 +160,15 @@ def load_contents_for_search():
         gid = ws.id
         cat1 = safe_acell(ws, "B23")
         cat2 = safe_acell(ws, "B24")
-        b5 = safe_acell(ws, "D5")
-        b15 = safe_acell(ws, "D15")
-        b17 = safe_acell(ws, "D17")
+        d5 = safe_acell(ws, "D5")
+        d15 = safe_acell(ws, "D15")
+        d17 = safe_acell(ws, "D17")
         data.append({
             "シート名": sheet_name,
             "gid": gid,
-            "B5": d5,
-            "B15": d15,
-            "B17": d17,
+            "D5": d5,
+            "D15": d15,
+            "D17": d17,
             "cat1": cat1,
             "cat2": cat2,
         })
@@ -185,7 +185,7 @@ if search_btn and user_input:
     recs = []
     for _, row in contents_df.iterrows():
         cond = (user_input in str(row["cat1"])) or (user_input in str(row["cat2"])) \
-             or (user_input in str(row["B5"])) or (user_input in str(row["B15"])) or (user_input in str(row["B17"])) \
+             or (user_input in str(row["D5"])) or (user_input in str(row["D15"])) or (user_input in str(row["D17"])) \
              or (user_input in str(row["シート名"]))
         if cond:
             recs.append(row)
