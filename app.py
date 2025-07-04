@@ -52,7 +52,6 @@ def create_d7d17_index_sheet():
     sheets = sh.worksheets()
     updated_rows = []
     added_rows = []
-    # シート名→行index辞書
     title_to_idx = {row["シート名"]: idx for idx, row in df_index.iterrows()}
 
     for ws in sheets:
@@ -63,24 +62,21 @@ def create_d7d17_index_sheet():
 
         if ws.title in title_to_idx:
             idx = title_to_idx[ws.title]
-            # どちらか空欄なら行リストに保存
             if (not df_index.loc[idx, "D7"]) or (not df_index.loc[idx, "D17"]):
                 df_index.at[idx, "D7"] = d7
                 df_index.at[idx, "D17"] = d17
                 updated_rows.append(idx)
         else:
-            # 新規追加
             df_index.loc[len(df_index)] = [ws.title, d7, d17]
             added_rows.append(len(df_index))
+        time.sleep(1)  # ★ここで1秒ウェイトを追加！
 
-    # まとめて更新（全体一括上書き！）
+    # まとめて更新（全体一括上書き）
+    values = [df_index.columns.tolist()] + df_index.values.tolist()
     if ws_index:
-        values = [df_index.columns.tolist()] + df_index.values.tolist()
         ws_index.update(f"A1:C{len(values)}", values)
     else:
-        # なければ新規作成
         ws_index = sh.add_worksheet(title=INDEX_SHEET_NAME, rows=len(df_index)+10, cols=3)
-        values = [df_index.columns.tolist()] + df_index.values.tolist()
         ws_index.update(f"A1:C{len(values)}", values)
     
     return len(updated_rows), len(added_rows)
