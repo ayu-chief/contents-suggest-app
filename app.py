@@ -38,6 +38,31 @@ def set_acell(ws, cell, value):
 
 import time
 
+def categorize_content_for_index(sheet_name, d7, d17):
+    prompt = f"""
+あなたは学校教育アクティビティの分類の専門家です。
+以下の「活動名」「D7内容」「D17内容」から、一般的な2階層のカテゴリーを日本語で推定してください。
+出力例：「第一階層 > 第二階層」
+---
+活動名: {sheet_name}
+D7: {d7}
+D17: {d17}
+カテゴリー:
+"""
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.2,
+    )
+    res = response.choices[0].message.content.strip()
+    if ">" in res:
+        cat1, cat2 = [x.strip() for x in res.split(">", 1)]
+    elif "＞" in res:
+        cat1, cat2 = [x.strip() for x in res.split("＞", 1)]
+    else:
+        cat1, cat2 = res, ""
+    return cat1, cat2
+
 def create_d7d17_index_sheet():
     INDEX_SHEET_NAME = "目次_D7D17"
     sh = gc.open_by_key(SPREADSHEET_ID)
@@ -53,22 +78,21 @@ def create_d7d17_index_sheet():
         sheet_name = ws.title
         d7 = safe_acell(ws, "D7")
         d17 = safe_acell(ws, "D17")
-        rows.append([sheet_name, d7, d17])
-        time.sleep(2.0)  # ★ここで2.0秒ウェイト
-    ws_index = sh.add_worksheet(title=INDEX_SHEET_NAME, rows=len(rows)+10, cols=3)
-    ws_index.update("A1", [["シート名", "D7", "D17"]])
+        # --- AIによるカテゴリ分類 ---
+        cat1, cat2 = categorize_content_for_index(sheet_name, d7, d17)
+        rows.append([sheet_name, d7, d17, cat1, cat2])
+        time.sleep(2.0)  # ウェイトでAPI制限回避
+    ws_index = sh.add_worksheet(title=INDEX_SHEET_NAME, rows=len(rows)+10, cols=5)
+    ws_index.update("A1", [["シート名", "D7", "D17", "分類①", "分類②"]])
     if rows:
-        ws_index.update(f"A2:C{len(rows)+1}", rows)
+        ws_index.update(f"A2:E{len(rows)+1}", rows)
     return len(rows)
 
 # --- 管理者用：AI分類→保存のボタン ---
 with st.expander("⚡ 管理者メニュー：AI分類ラベルを保存", expanded=True):
-    # ...既存のボタン...
-    if st.button("目次_D7D17シートを作成/更新（全シートD7・D17一覧）"):
+    if st.button("目次_D7D17シートを作成/更新（AI分類付き）"):
         n = create_d7d17_index_sheet()
         st.success(f"目次_D7D17シートを作成・更新しました！（{n}件）")
-
-   
 
 # --- サジェスト用データ読込 ---
 @st.cache_data
