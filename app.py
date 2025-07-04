@@ -50,8 +50,9 @@ def create_d7d17_index_sheet():
         if ws.title == INDEX_SHEET_NAME:
             continue
         sheet_name = ws.title
-        d5 = safe_acell(ws, "D7")
-        d7 = safe_acell(ws, "D17")
+        # 必ずここで定義
+        d7 = safe_acell(ws, "D7")
+        d17 = safe_acell(ws, "D17")
         rows.append([sheet_name, d7, d17])
     # 新しいシート作成＆書き込み
     ws_index = sh.add_worksheet(title=INDEX_SHEET_NAME, rows=len(rows)+10, cols=3)
