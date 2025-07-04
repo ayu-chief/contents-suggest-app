@@ -36,6 +36,8 @@ def set_acell(ws, cell, value):
     except Exception as e:
         print(f"{ws.title} {cell}書き込み失敗: {e}")
 
+import time
+
 def create_d7d17_index_sheet():
     INDEX_SHEET_NAME = "目次_D7D17"
     sh = gc.open_by_key(SPREADSHEET_ID)
@@ -45,7 +47,6 @@ def create_d7d17_index_sheet():
         pass
     rows = []
     sheets = sh.worksheets()
-    st.write(f"全シート数: {len(sheets)}")
     for i, ws in enumerate(sheets):
         if ws.title == INDEX_SHEET_NAME:
             continue
@@ -53,9 +54,7 @@ def create_d7d17_index_sheet():
         d7 = safe_acell(ws, "D7")
         d17 = safe_acell(ws, "D17")
         rows.append([sheet_name, d7, d17])
-        st.write(f"{i+1}/{len(sheets)}: {sheet_name} D7: {d7} D17: {d17}")
-        # time.sleep(0.2)  # 必要なら入れる
-    st.write(f"rows作成数: {len(rows)}")
+        time.sleep(0.2)  # ★ここで0.2秒ウェイト
     ws_index = sh.add_worksheet(title=INDEX_SHEET_NAME, rows=len(rows)+10, cols=3)
     ws_index.update("A1", [["シート名", "D7", "D17"]])
     if rows:
