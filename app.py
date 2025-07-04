@@ -92,12 +92,26 @@ def ai_categorize_new_sheets():
             time.sleep(2)  # さらに余裕をもって待機
     return categorized
 
-# --- StreamlitのUI: AI分類実行ボタン ---
-with st.expander("⚡ 新しいシートのみAI分類を実行（管理者用）"):
-    if st.button("新規シートだけAI分類してB23/B24に保存する"):
-        with st.spinner("AI分類を実行中...（しばらくお待ちください）"):
-            n = ai_categorize_new_sheets()
-        st.success(f"{n}件の新しいシートにAI分類を保存しました。")
+# --- 管理者用：AI分類→B23/B24保存のボタン ---
+with st.expander("⚡ 管理者メニュー：AI分類ラベルを保存", expanded=False):
+    if st.button("全シートでAI分類→B23/B24に保存（本番実行）"):
+        sh = gc.open_by_key(SPREADSHEET_ID)
+        worksheets = sh.worksheets()
+        count = 0
+        for ws in worksheets:
+            b23 = safe_acell(ws, "B23")
+            b24 = safe_acell(ws, "B24")
+            if not b23 or not b24:
+                b5 = safe_acell(ws, "B5")
+                b15 = safe_acell(ws, "B15")
+                b17 = safe_acell(ws, "B17")
+                summary = f"{b5} {b15} {b17}"
+                cat1, cat2 = categorize_content_with_retry(ws.title, summary)
+                set_acell(ws, "B23", cat1)
+                set_acell(ws, "B24", cat2)
+                count += 1
+                time.sleep(2)
+        st.success(f"{count}件のシートにAI分類ラベルを保存しました！")
 
 # --- サジェスト用データ読込 ---
 @st.cache_data
@@ -160,11 +174,3 @@ if search_btn and user_input:
         st.info("条件に合うおすすめが見つかりませんでした。検索ワードを変えてみてください。")
 else:
     st.write("上の検索欄に希望を入力して「おすすめを表示」ボタンを押してください。")
-
-# ↓↓ テスト：1シートだけ明示的にB23/B24へ書き込み ↓↓
-if st.button("1枚目シートのB23/B24にテスト書き込み"):
-    sh = gc.open_by_key(SPREADSHEET_ID)
-    ws = sh.worksheets()[0]  # 1番目のシート
-    set_acell(ws, "B23", "テスト第一階層")
-    set_acell(ws, "B24", "テスト第二階層")
-    st.success("1枚目のシートにテストで書き込みました！Google Sheetsを開いて確認してください。")
