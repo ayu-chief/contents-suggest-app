@@ -36,8 +36,8 @@ def set_acell(ws, cell, value):
     except Exception as e:
         print(f"{ws.title} {cell}書き込み失敗: {e}")
 
-def create_d5d7_index_sheet():
-    INDEX_SHEET_NAME = "目次_D5D7"
+def create_d7d17_index_sheet():
+    INDEX_SHEET_NAME = "目次_D7D17"
     sh = gc.open_by_key(SPREADSHEET_ID)
     # 既存シートがあれば削除
     try:
@@ -50,12 +50,12 @@ def create_d5d7_index_sheet():
         if ws.title == INDEX_SHEET_NAME:
             continue
         sheet_name = ws.title
-        d5 = safe_acell(ws, "D5")   # ← ここは d5 (小文字)
-        d7 = safe_acell(ws, "D7")
-        rows.append([sheet_name, d5, d7])
+        d5 = safe_acell(ws, "D7")
+        d7 = safe_acell(ws, "D17")
+        rows.append([sheet_name, d7, d17])
     # 新しいシート作成＆書き込み
     ws_index = sh.add_worksheet(title=INDEX_SHEET_NAME, rows=len(rows)+10, cols=3)
-    ws_index.update("A1", [["シート名", "D5", "D7"]])
+    ws_index.update("A1", [["シート名", "D7", "D17"]])
     if rows:
         ws_index.update("A2", rows)
     return len(rows)
@@ -63,9 +63,9 @@ def create_d5d7_index_sheet():
 # --- 管理者用：AI分類→保存のボタン ---
 with st.expander("⚡ 管理者メニュー：AI分類ラベルを保存", expanded=True):
     # ...既存のボタン...
-    if st.button("目次_D5D7シートを作成/更新（全シートD5・D7一覧）"):
+    if st.button("目次_D7D17シートを作成/更新（全シートD7・D17一覧）"):
         n = create_d5d7_index_sheet()
-        st.success(f"目次_D5D7シートを作成・更新しました！（{n}件）")
+        st.success(f"目次_D7D17シートを作成・更新しました！（{n}件）")
 
    
 
