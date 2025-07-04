@@ -19,39 +19,6 @@ scopes = ["https://www.googleapis.com/auth/spreadsheets",
 creds = Credentials.from_service_account_info(SERVICE_ACCOUNT_INFO, scopes=scopes)
 gc = gspread.authorize(creds)
 
-# 全シートのデータ取得
-@st.cache_data
-def load_all_contents():
-    sh = gc.open_by_key(SPREADSHEET_ID)
-    sheets = sh.worksheets()
-    all_contents = []
-    for ws in sheets:
-        try:
-            df = pd.DataFrame(ws.get_all_records())
-            if len(df) == 0:
-                continue
-            df["シート名"] = ws.title
-            df["gid"] = ws.id
-            all_contents.append(df)
-        except Exception as e:
-            continue
-    if all_contents:
-        return pd.concat(all_contents, ignore_index=True)
-    else:
-        return pd.DataFrame()
-
-contents_df = load_all_contents()
-# ここでデータの中身を画面でチェック！
-st.dataframe(contents_df)
-
-# テーマ列（例：B7セル）の取得補助関数
-def get_b7_value(ws):
-    try:
-        value = ws.acell("B7").value
-        return value if value else ""
-    except Exception:
-        return ""
-
 def categorize_content(content_name, summary):
     prompt = f"""
 あなたは学校教育アクティビティの分類の専門家です。
@@ -62,10 +29,11 @@ def categorize_content(content_name, summary):
 説明: {summary}
 カテゴリー:
 """
-    response = client.chat.completions.create(
+    response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.2,
+        api_key=OPENAI_API_KEY,
     )
     res = response.choices[0].message.content.strip()
     if ">" in res:
@@ -75,6 +43,34 @@ def categorize_content(content_name, summary):
     else:
         cat1, cat2 = res, ""
     return cat1, cat2
+
+categories = []
+worksheets = gc.open_by_key(SPREADSHEET_ID).worksheets()
+for ws in worksheets:
+    content_name = ws.title
+    # B5, B15, B17の内容取得
+    def safe_acell(ws, cell):
+        try:
+            return ws.acell(cell).value or ""
+        except Exception:
+            return ""
+    b5 = safe_acell(ws, "B5")
+    b15 = safe_acell(ws, "B15")
+    b17 = safe_acell(ws, "B17")
+    # まとめてサマリーテキスト
+    summary = f"{b5} {b15} {b17}"
+    cat1, cat2 = categorize_content(content_name, summary)
+    categories.append({
+        "コンテンツ名": content_name,
+        "B5": b5,
+        "B15": b15,
+        "B17": b17,
+        "第一階層": cat1,
+        "第二階層": cat2
+    })
+categories_df = pd.DataFrame(categories)
+st.subheader("二層分類ラベル一覧")
+st.dataframe(categories_df)
 
 # UIここから
 st.title("おすすめ活動サジェスト")
