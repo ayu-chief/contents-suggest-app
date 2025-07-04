@@ -64,7 +64,7 @@ def create_d7d17_index_sheet():
 with st.expander("⚡ 管理者メニュー：AI分類ラベルを保存", expanded=True):
     # ...既存のボタン...
     if st.button("目次_D7D17シートを作成/更新（全シートD7・D17一覧）"):
-        n = create_d5d7_index_sheet()
+        n = create_d7d17_index_sheet()
         st.success(f"目次_D7D17シートを作成・更新しました！（{n}件）")
 
    
