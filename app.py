@@ -37,7 +37,7 @@ def set_acell(ws, cell, value):
         print(f"{ws.title} {cell}書き込み失敗: {e}")
 
 def create_b5b7_index_sheet():
-    INDEX_SHEET_NAME = "目次_B5B7"
+    INDEX_SHEET_NAME = "目次_D5D7"
     sh = gc.open_by_key(SPREADSHEET_ID)
     # 既存シートがあれば削除
     try:
@@ -50,12 +50,12 @@ def create_b5b7_index_sheet():
         if ws.title == INDEX_SHEET_NAME:
             continue
         sheet_name = ws.title
-        b5 = safe_acell(ws, "B5")
-        b7 = safe_acell(ws, "B7")
-        rows.append([sheet_name, b5, b7])
+        b5 = safe_acell(ws, "D5")
+        b7 = safe_acell(ws, "D7")
+        rows.append([sheet_name, d5, d7])
     # 新しいシート作成＆書き込み
     ws_index = sh.add_worksheet(title=INDEX_SHEET_NAME, rows=len(rows)+10, cols=3)
-    ws_index.update("A1", [["シート名", "B5", "B7"]])
+    ws_index.update("A1", [["シート名", "D5", "D7"]])
     if rows:
         ws_index.update("A2", rows)
     return len(rows)
@@ -105,10 +105,10 @@ def ai_categorize_new_sheets():
         b23 = safe_acell(ws, "B23")
         b24 = safe_acell(ws, "B24")
         if not b23 or not b24:
-            b5 = safe_acell(ws, "B5")
-            b15 = safe_acell(ws, "B15")
-            b17 = safe_acell(ws, "B17")
-            summary = f"{b5} {b15} {b17}"
+            b5 = safe_acell(ws, "D5")
+            b15 = safe_acell(ws, "D15")
+            b17 = safe_acell(ws, "D17")
+            summary = f"{d5} {d15} {d17}"
             cat1, cat2 = categorize_content_with_retry(ws.title, summary)
             set_acell(ws, "B23", cat1)
             set_acell(ws, "B24", cat2)
@@ -128,10 +128,10 @@ with st.expander("⚡ 管理者メニュー：AI分類ラベルを保存", expan
             # デバッグ：現在のB23/B24を表示
             st.write(f"{ws.title} B23:『{b23}』 B24:『{b24}』")
             if (not b23 or b23.strip() == "") or (not b24 or b24.strip() == ""):
-                b5 = safe_acell(ws, "B5")
-                b15 = safe_acell(ws, "B15")
-                b17 = safe_acell(ws, "B17")
-                summary = f"{b5} {b15} {b17}"
+                b5 = safe_acell(ws, "D5")
+                b15 = safe_acell(ws, "D15")
+                b17 = safe_acell(ws, "D17")
+                summary = f"{d5} {d15} {d17}"
                 cat1, cat2 = categorize_content_with_retry(ws.title, summary)
                 st.write(f"→AI分類結果: {cat1} | {cat2}")
                 set_acell(ws, "B23", cat1)
@@ -145,9 +145,9 @@ with st.expander("⚡ 管理者メニュー：AI分類ラベルを保存", expan
               
 with st.expander("⚡ 管理者メニュー：AI分類ラベルを保存", expanded=True):
     # ...既存のボタン...
-    if st.button("目次_B5B7シートを作成/更新（全シートB5・B7一覧）"):
+    if st.button("目次_B5B7シートを作成/更新（全シートD5・D7一覧）"):
         n = create_b5b7_index_sheet()
-        st.success(f"目次_B5B7シートを作成・更新しました！（{n}件）")
+        st.success(f"目次_D5D7シートを作成・更新しました！（{n}件）")
 
 # --- サジェスト用データ読込 ---
 @st.cache_data
@@ -160,15 +160,15 @@ def load_contents_for_search():
         gid = ws.id
         cat1 = safe_acell(ws, "B23")
         cat2 = safe_acell(ws, "B24")
-        b5 = safe_acell(ws, "B5")
-        b15 = safe_acell(ws, "B15")
-        b17 = safe_acell(ws, "B17")
+        b5 = safe_acell(ws, "D5")
+        b15 = safe_acell(ws, "D15")
+        b17 = safe_acell(ws, "D17")
         data.append({
             "シート名": sheet_name,
             "gid": gid,
-            "B5": b5,
-            "B15": b15,
-            "B17": b17,
+            "B5": d5,
+            "B15": d15,
+            "B17": d17,
             "cat1": cat1,
             "cat2": cat2,
         })
@@ -197,9 +197,9 @@ if search_btn and user_input:
             st.write(f'### {rec["シート名"]}')
             st.write(f'第一階層: {rec["cat1"]}')
             st.write(f'第二階層: {rec["cat2"]}')
-            st.write(f'B5: {rec["B5"]}')
-            st.write(f'B15: {rec["B15"]}')
-            st.write(f'B17: {rec["B17"]}')
+            st.write(f'D5: {rec["D5"]}')
+            st.write(f'D15: {rec["D15"]}')
+            st.write(f'D17: {rec["D17"]}')
             sheet_url = SHEET_BASE_URL + str(rec["gid"])
             st.markdown(f'<a href="{sheet_url}" target="_blank" style="font-size:18px; color:blue; text-decoration:underline;">詳細を見る</a>', unsafe_allow_html=True)
             st.write("---")
