@@ -167,6 +167,24 @@ with st.expander("⚡ 管理者メニュー：目次シートAI分類", expanded
         n = categorize_d7d17_index_sheet_only_empty()
         st.success(f"{n}件の分類ラベルを書き込みました！")
 
+    if st.button("デバッグ：2行目だけAI分類テスト"):
+        try:
+            sh = gc.open_by_key(SPREADSHEET_ID)
+            ws_index = sh.worksheet("目次_D7D17")
+            sheet_name = ws_index.acell("A2").value
+            d7 = ws_index.acell("B2").value
+            d17 = ws_index.acell("C2").value
+
+            # 必ずリトライ付きの関数で
+            cat1, cat2 = categorize_content_for_index_with_retry(sheet_name, d7, d17)
+            st.write(f"{sheet_name}: {cat1} > {cat2}")
+
+            ws_index.update("D2", cat1)
+            ws_index.update("E2", cat2)
+            st.success(f"2行目: {sheet_name} の分類を書き込みました")
+        except Exception as e:
+            st.error(f"エラー: {e}")
+
 # --- サジェスト用データ読込 ---
 @st.cache_data
 def load_contents_for_search():
