@@ -19,6 +19,40 @@ scopes = ["https://www.googleapis.com/auth/spreadsheets",
 creds = Credentials.from_service_account_info(SERVICE_ACCOUNT_INFO, scopes=scopes)
 gc = gspread.authorize(creds)
 
+# --- OpenAI新APIクライアントを1回だけ作成 ---
+client = openai.OpenAI(api_key=OPENAI_API_KEY)
+
+# --- シートからコンテンツ情報を取得 ---
+@st.cache_data
+def load_all_contents():
+    sh = gc.open_by_key(SPREADSHEET_ID)
+    sheets = sh.worksheets()
+    data = []
+    for ws in sheets:
+        sheet_name = ws.title
+        gid = ws.id
+        def safe_acell(cell):
+            try:
+                return ws.acell(cell).value or ""
+            except Exception:
+                return ""
+        b5 = safe_acell("B5")
+        b15 = safe_acell("B15")
+        b17 = safe_acell("B17")
+        summary = f"{b5} {b15} {b17}"
+        data.append({
+            "シート名": sheet_name,
+            "gid": gid,
+            "B5": b5,
+            "B15": b15,
+            "B17": b17,
+            "summary": summary
+        })
+    return pd.DataFrame(data)
+
+contents_df = load_all_contents()
+
+# --- AIで2層分類（OpenAI新API） ---
 def categorize_content(content_name, summary):
     prompt = f"""
 あなたは学校教育アクティビティの分類の専門家です。
@@ -29,11 +63,10 @@ def categorize_content(content_name, summary):
 説明: {summary}
 カテゴリー:
 """
-    response = openai.ChatCompletion.create(
+    response = client.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.2,
-        api_key=OPENAI_API_KEY,
     )
     res = response.choices[0].message.content.strip()
     if ">" in res:
@@ -44,60 +77,30 @@ def categorize_content(content_name, summary):
         cat1, cat2 = res, ""
     return cat1, cat2
 
-categories = []
-worksheets = gc.open_by_key(SPREADSHEET_ID).worksheets()
-for ws in worksheets:
-    content_name = ws.title
-    # B5, B15, B17の内容取得
-    def safe_acell(ws, cell):
-        try:
-            return ws.acell(cell).value or ""
-        except Exception:
-            return ""
-    b5 = safe_acell(ws, "B5")
-    b15 = safe_acell(ws, "B15")
-    b17 = safe_acell(ws, "B17")
-    # まとめてサマリーテキスト
-    summary = f"{b5} {b15} {b17}"
-    cat1, cat2 = categorize_content(content_name, summary)
-    categories.append({
-        "コンテンツ名": content_name,
-        "B5": b5,
-        "B15": b15,
-        "B17": b17,
-        "第一階層": cat1,
-        "第二階層": cat2
-    })
-categories_df = pd.DataFrame(categories)
-st.subheader("二層分類ラベル一覧")
-st.dataframe(categories_df)
-
-# UIここから
+# --- UIここから ---
 st.title("おすすめ活動サジェスト")
-
 user_input = st.text_input("どんな活動を探していますか？（例：自然系、小学生向け、運動など）")
 search_btn = st.button("おすすめを表示")
 
 if search_btn and user_input:
-    # 各コンテンツごとにカテゴリー推定＋テーマ抽出
     recs = []
+    # 必要なら件数を制限: contents_df.head(5).iterrows() など
     for i, row in contents_df.iterrows():
-        # 各ワークシートのB7セル（テーマ）取得
-        ws = gc.open_by_key(SPREADSHEET_ID).worksheet(row["シート名"])
-        theme = get_b7_value(ws)
-        cat1, cat2 = categorize_content(row["シート名"], theme)
-        # 検索キーワードの部分一致でフィルタ
-        cond = (user_input in cat1) or (user_input in cat2) or (user_input in theme) or (user_input in str(row["シート名"])) or (user_input in str(row.get("説明", "")))
+        # AI分類（最初の5件などに制限推奨）
+        cat1, cat2 = categorize_content(row["シート名"], row["summary"])
+        # 部分一致フィルタ
+        cond = (user_input in cat1) or (user_input in cat2) or \
+               (user_input in str(row["summary"])) or (user_input in str(row["シート名"]))
         if cond:
             recs.append({
                 "コンテンツ名": row["シート名"],
-                "説明": row.get("説明", ""),
+                "B5": row["B5"],
+                "B15": row["B15"],
+                "B17": row["B17"],
                 "gid": row["gid"],
                 "カテゴリー": f"{cat1} > {cat2}",
-                "テーマ": theme
             })
 
-    # おすすめ上位3件
     top3 = recs[:3]
     others = recs[3:10]
 
@@ -106,8 +109,9 @@ if search_btn and user_input:
         for rec in top3:
             st.write(f'### {rec["コンテンツ名"]}')
             st.write(f'カテゴリー: {rec["カテゴリー"]}')
-            st.write(f'テーマ: {rec["テーマ"]}')
-            st.write(f'説明: {rec["説明"] if rec["説明"] else "（説明なし）"}')
+            st.write(f'B5: {rec["B5"]}')
+            st.write(f'B15: {rec["B15"]}')
+            st.write(f'B17: {rec["B17"]}')
             sheet_url = SHEET_BASE_URL + str(rec["gid"])
             st.markdown(f'<a href="{sheet_url}" target="_blank" style="font-size:18px; color:blue; text-decoration:underline;">詳細を見る</a>', unsafe_allow_html=True)
             st.write("---")
