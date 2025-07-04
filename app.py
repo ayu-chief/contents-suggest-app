@@ -41,24 +41,37 @@ import time
 def create_d7d17_index_sheet():
     INDEX_SHEET_NAME = "目次_D7D17"
     sh = gc.open_by_key(SPREADSHEET_ID)
+    # 目次シートがあれば既存リスト取得
     try:
-        sh.del_worksheet(sh.worksheet(INDEX_SHEET_NAME))
+        ws_index = sh.worksheet(INDEX_SHEET_NAME)
+        existing = ws_index.col_values(1)[1:]  # 1行目はヘッダー
     except Exception:
-        pass
+        ws_index = None
+        existing = []
+
+    # 新規で追記する行を集める
     rows = []
     sheets = sh.worksheets()
-    for i, ws in enumerate(sheets):
+    for ws in sheets:
         if ws.title == INDEX_SHEET_NAME:
             continue
+        if ws.title in existing:
+            continue  # すでに目次にある場合はスキップ
         sheet_name = ws.title
         d7 = safe_acell(ws, "D7")
         d17 = safe_acell(ws, "D17")
         rows.append([sheet_name, d7, d17])
-        time.sleep(2.0)  # ★ここで2.0秒ウェイト
-    ws_index = sh.add_worksheet(title=INDEX_SHEET_NAME, rows=len(rows)+10, cols=3)
-    ws_index.update("A1", [["シート名", "D7", "D17"]])
+        time.sleep(2.0)
+
+    # シートがなければ作成
+    if not ws_index:
+        ws_index = sh.add_worksheet(title=INDEX_SHEET_NAME, rows=len(rows)+10, cols=3)
+        ws_index.update("A1", [["シート名", "D7", "D17"]])
+
+    # 新規データのみ追記
     if rows:
-        ws_index.update(f"A2:C{len(rows)+1}", rows)
+        start_row = len(existing) + 2  # 1ヘッダー+既存分
+        ws_index.update(f"A{start_row}:C{start_row + len(rows) - 1}", rows)
     return len(rows)
 
 # --- 管理者用：AI分類→保存のボタン ---
@@ -66,6 +79,60 @@ with st.expander("⚡ 管理者メニュー：AI分類ラベルを保存", expan
     if st.button("目次_D7D17シートを作成/更新（全シートD7・D17一覧）"):
         n = create_d7d17_index_sheet()
         st.success(f"目次_D7D17シートを作成・更新しました！（{n}件）")
+
+def categorize_content_for_index(sheet_name, d7, d17):
+    prompt = f"""
+あなたは学校教育アクティビティの分類の専門家です。
+以下の「活動名」「D7内容」「D17内容」から、一般的な2階層のカテゴリーを日本語で推定してください。
+出力例：「第一階層 > 第二階層」
+---
+活動名: {sheet_name}
+D7: {d7}
+D17: {d17}
+カテゴリー:
+"""
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.2,
+    )
+    res = response.choices[0].message.content.strip()
+    if ">" in res:
+        cat1, cat2 = [x.strip() for x in res.split(">", 1)]
+    elif "＞" in res:
+        cat1, cat2 = [x.strip() for x in res.split("＞", 1)]
+    else:
+        cat1, cat2 = res, ""
+    return cat1, cat2
+
+def categorize_d7d17_index_sheet_only_empty():
+    INDEX_SHEET_NAME = "目次_D7D17"
+    sh = gc.open_by_key(SPREADSHEET_ID)
+    ws_index = sh.worksheet(INDEX_SHEET_NAME)
+    records = ws_index.get_all_values()
+    if len(records) < 2:
+        return 0
+    updated = 0
+    for i, row in enumerate(records[1:], start=2):  # 2行目から
+        sheet_name = row[0] if len(row) > 0 else ""
+        d7 = row[1] if len(row) > 1 else ""
+        d17 = row[2] if len(row) > 2 else ""
+        cat1 = row[3] if len(row) > 3 else ""
+        cat2 = row[4] if len(row) > 4 else ""
+        # D列・E列が両方空欄だけ分類（どちらか埋まっていればスキップ）
+        if not cat1 and not cat2:
+            cat1, cat2 = categorize_content_for_index(sheet_name, d7, d17)
+            ws_index.update(f"D{i}", cat1)
+            ws_index.update(f"E{i}", cat2)
+            time.sleep(1.5)  # レート制限回避
+            updated += 1
+    return updated
+
+# --- 管理者メニュー Streamlit ボタン ---
+with st.expander("⚡ 管理者メニュー：目次シートAI分類", expanded=True):
+    if st.button("目次_D7D17シートの空欄のみAI分類（二層）で追記"):
+        n = categorize_d7d17_index_sheet_only_empty()
+        st.success(f"{n}件の分類ラベルを書き込みました！")
 
 # --- サジェスト用データ読込 ---
 @st.cache_data
