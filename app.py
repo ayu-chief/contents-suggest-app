@@ -6,6 +6,7 @@ import openai
 
 # OpenAI APIキーはSecretsから
 OPENAI_API_KEY = st.secrets["openai_api_key"]
+client = openai.OpenAI(api_key=OPENAI_API_KEY)
 
 # Google Sheets認証情報もSecretsから
 SERVICE_ACCOUNT_INFO = st.secrets["google_service_account"]  # Secrets名は後述
@@ -28,7 +29,7 @@ def categorize_content(content_name, summary):
 説明: {summary}
 カテゴリー:
 """
-    response = openai.ChatCompletion.create(
+    response = client.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.2,
