@@ -50,8 +50,8 @@ def create_d5d7_index_sheet():
         if ws.title == INDEX_SHEET_NAME:
             continue
         sheet_name = ws.title
-        D5 = safe_acell(ws, "D5")
-        D7 = safe_acell(ws, "D7")
+        d5 = safe_acell(ws, "D5")   # ← ここは d5 (小文字)
+        d7 = safe_acell(ws, "D7")
         rows.append([sheet_name, d5, d7])
     # 新しいシート作成＆書き込み
     ws_index = sh.add_worksheet(title=INDEX_SHEET_NAME, rows=len(rows)+10, cols=3)
@@ -60,48 +60,14 @@ def create_d5d7_index_sheet():
         ws_index.update("A2", rows)
     return len(rows)
 
-def categorize_content(content_name, summary):
-    prompt = f"""
-あなたは学校教育アクティビティの分類の専門家です。
-次の「コンテンツ名」と「説明（本文）」から、できるだけ一般的な2階層のカテゴリーを日本語で推定してください。
-出力例：「第一階層 > 第二階層」
----
-コンテンツ名: {content_name}
-説明: {summary}
-カテゴリー:
-"""
-    response = client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.2,
-    )
-    res = response.choices[0].message.content.strip()
-    if ">" in res:
-        cat1, cat2 = [x.strip() for x in res.split(">", 1)]
-    elif "＞" in res:
-        cat1, cat2 = [x.strip() for x in res.split("＞", 1)]
-    else:
-        cat1, cat2 = res, ""
-    return cat1, cat2
-
-def categorize_content_with_retry(content_name, summary, retries=5, wait_sec=10):
-    for attempt in range(retries):
-        try:
-            return categorize_content(content_name, summary)
-        except openai.RateLimitError:
-            if attempt < retries - 1:
-                st.warning(f"OpenAIの利用制限。{wait_sec}秒待機してリトライ({attempt+1}/{retries})...")
-                time.sleep(wait_sec)
-            else:
-                st.error("リトライ上限でスキップします。")
-                return "", ""
-
 # --- 管理者用：AI分類→保存のボタン ---
 with st.expander("⚡ 管理者メニュー：AI分類ラベルを保存", expanded=True):
     # ...既存のボタン...
-    if st.button("目次_B5B7シートを作成/更新（全シートD5・D7一覧）"):
-        n = create_b5b7_index_sheet()
+    if st.button("目次_D5D7シートを作成/更新（全シートD5・D7一覧）"):
+        n = create_d5d7_index_sheet()
         st.success(f"目次_D5D7シートを作成・更新しました！（{n}件）")
+
+   
 
 # --- サジェスト用データ読込 ---
 @st.cache_data
