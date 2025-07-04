@@ -93,7 +93,7 @@ def ai_categorize_new_sheets():
     return categorized
 
 # --- 管理者用：AI分類→B23/B24保存のボタン ---
-with st.expander("⚡ 管理者メニュー：AI分類ラベルを保存", expanded=False):
+with st.expander("⚡ 管理者メニュー：AI分類ラベルを保存", expanded=True):
     if st.button("全シートでAI分類→B23/B24に保存（本番実行）"):
         sh = gc.open_by_key(SPREADSHEET_ID)
         worksheets = sh.worksheets()
@@ -101,16 +101,22 @@ with st.expander("⚡ 管理者メニュー：AI分類ラベルを保存", expan
         for ws in worksheets:
             b23 = safe_acell(ws, "B23")
             b24 = safe_acell(ws, "B24")
-            if not b23 or not b24:
+            # デバッグ：現在のB23/B24を表示
+            st.write(f"{ws.title} B23:『{b23}』 B24:『{b24}』")
+            if (not b23 or b23.strip() == "") or (not b24 or b24.strip() == ""):
                 b5 = safe_acell(ws, "B5")
                 b15 = safe_acell(ws, "B15")
                 b17 = safe_acell(ws, "B17")
                 summary = f"{b5} {b15} {b17}"
                 cat1, cat2 = categorize_content_with_retry(ws.title, summary)
+                st.write(f"→AI分類結果: {cat1} | {cat2}")
                 set_acell(ws, "B23", cat1)
                 set_acell(ws, "B24", cat2)
+                st.success(f"{ws.title} にAI分類を書き込みました")
                 count += 1
                 time.sleep(2)
+            else:
+                st.info(f"{ws.title} はすでに分類済みなのでスキップ")
         st.success(f"{count}件のシートにAI分類ラベルを保存しました！")
 
 # --- サジェスト用データ読込 ---
