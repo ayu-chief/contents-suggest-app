@@ -40,6 +40,8 @@ def load_all_contents():
         return pd.DataFrame()
 
 contents_df = load_all_contents()
+# ここでデータの中身を画面でチェック！
+st.dataframe(contents_df)
 
 # テーマ列（例：B7セル）の取得補助関数
 def get_b7_value(ws):
