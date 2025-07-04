@@ -54,7 +54,7 @@ def create_d7d17_index_sheet():
         d7 = safe_acell(ws, "D7")
         d17 = safe_acell(ws, "D17")
         rows.append([sheet_name, d7, d17])
-        time.sleep(0.2)  # ★ここで0.2秒ウェイト
+        time.sleep(2.0)  # ★ここで2.0秒ウェイト
     ws_index = sh.add_worksheet(title=INDEX_SHEET_NAME, rows=len(rows)+10, cols=3)
     ws_index.update("A1", [["シート名", "D7", "D17"]])
     if rows:
