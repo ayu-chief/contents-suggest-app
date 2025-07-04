@@ -39,26 +39,27 @@ def set_acell(ws, cell, value):
 def create_d7d17_index_sheet():
     INDEX_SHEET_NAME = "目次_D7D17"
     sh = gc.open_by_key(SPREADSHEET_ID)
-    # 既存シートがあれば削除
     try:
         sh.del_worksheet(sh.worksheet(INDEX_SHEET_NAME))
     except Exception:
         pass
-    # データ収集
     rows = []
-    for ws in sh.worksheets():
+    sheets = sh.worksheets()
+    st.write(f"全シート数: {len(sheets)}")
+    for i, ws in enumerate(sheets):
         if ws.title == INDEX_SHEET_NAME:
             continue
         sheet_name = ws.title
-        # 必ずここで定義
         d7 = safe_acell(ws, "D7")
         d17 = safe_acell(ws, "D17")
         rows.append([sheet_name, d7, d17])
-    # 新しいシート作成＆書き込み
+        st.write(f"{i+1}/{len(sheets)}: {sheet_name} D7: {d7} D17: {d17}")
+        # time.sleep(0.2)  # 必要なら入れる
+    st.write(f"rows作成数: {len(rows)}")
     ws_index = sh.add_worksheet(title=INDEX_SHEET_NAME, rows=len(rows)+10, cols=3)
     ws_index.update("A1", [["シート名", "D7", "D17"]])
     if rows:
-        ws_index.update("A2", rows)
+        ws_index.update(f"A2:C{len(rows)+1}", rows)
     return len(rows)
 
 # --- 管理者用：AI分類→保存のボタン ---
