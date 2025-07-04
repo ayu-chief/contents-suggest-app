@@ -160,3 +160,11 @@ if search_btn and user_input:
         st.info("条件に合うおすすめが見つかりませんでした。検索ワードを変えてみてください。")
 else:
     st.write("上の検索欄に希望を入力して「おすすめを表示」ボタンを押してください。")
+
+# ↓↓ テスト：1シートだけ明示的にB23/B24へ書き込み ↓↓
+if st.button("1枚目シートのB23/B24にテスト書き込み"):
+    sh = gc.open_by_key(SPREADSHEET_ID)
+    ws = sh.worksheets()[0]  # 1番目のシート
+    set_acell(ws, "B23", "テスト第一階層")
+    set_acell(ws, "B24", "テスト第二階層")
+    st.success("1枚目のシートにテストで書き込みました！Google Sheetsを開いて確認してください。")
