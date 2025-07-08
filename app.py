@@ -108,6 +108,7 @@ elif page == "分類で探す":
 
         # 全小分類値（大分類絞り込み後）
         all_subcats = pd.unique(pd.concat([filtered[col] for col in shoubunrui_cols]).dropna())
+        all_subcats = [cat for cat in all_subcats if str(cat).strip() != ""]  # ←★空白除外
         selected_sub = st.selectbox("小分類を選んでください", ["すべて"] + sorted(all_subcats))
 
         # 小分類が1/2/3のどれかに入っていればOK
