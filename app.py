@@ -122,11 +122,9 @@ def categorize_d7d17_index_sheet_only_empty():
     if len(records) < 2:
         return 0
     updated = 0
-    all_values = records
-    for row in all_values:
+    for i, row in enumerate(records[1:], start=2):  # 2行目から
         while len(row) < 5:
             row.append("")
-    for i, row in enumerate(all_values[1:], start=2):  # 2行目から
         sheet_name = row[0]
         d7 = row[1]
         d17 = row[2]
@@ -134,11 +132,10 @@ def categorize_d7d17_index_sheet_only_empty():
         cat2 = row[4]
         if not cat1 and not cat2:
             cat1, cat2 = categorize_content_for_index_with_retry(sheet_name, d7, d17)
-            all_values[i-1][3] = cat1
-            all_values[i-1][4] = cat2
+            ws_index.update(f"D{i}", [[cat1]])
+            ws_index.update(f"E{i}", [[cat2]])
             time.sleep(1.5)
             updated += 1
-    ws_index.update(f"A1:E{len(all_values)}", all_values)
     return updated
 
 # --- 管理者メニュー ---
