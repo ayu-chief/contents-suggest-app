@@ -92,29 +92,37 @@ if page == "活動サジェストチャット":
 
 elif page == "分類で探す":
     st.title("分類で活動を一覧")
-    # ここでは「分類①」でグループ化する例
-    if "分類①" in df.columns:
-        categories = sorted(df["分類①"].dropna().unique())
-        selected_cat = st.selectbox("大分類を選んでください", categories)
-        filtered = df[df["分類①"] == selected_cat]
-        if "分類②" in df.columns:
-            subcats = sorted(filtered["分類②"].dropna().unique())
-            selected_sub = st.selectbox("小分類を選んでください", ["すべて"] + subcats)
-            if selected_sub != "すべて":
-                filtered = filtered[filtered["分類②"] == selected_sub]
+    # 「大分類」「小分類」の全カラム取得
+    daibunrui_cols = [c for c in df.columns if c.startswith("大分類")]
+    shoubunrui_cols = [c for c in df.columns if c.startswith("小分類")]
+
+    if not daibunrui_cols or not shoubunrui_cols:
+        st.warning("大分類・小分類のカラムが見つかりません。")
+    else:
+        # 全大分類値をユニークで
+        all_cats = pd.unique(pd.concat([df[col] for col in daibunrui_cols]).dropna())
+        selected_cat = st.selectbox("大分類を選んでください", sorted(all_cats))
+
+        # 大分類が1/2/3のどれかに入っていればOK
+        filtered = df[df[daibunrui_cols].apply(lambda row: selected_cat in row.values, axis=1)]
+
+        # 全小分類値（大分類絞り込み後）
+        all_subcats = pd.unique(pd.concat([filtered[col] for col in shoubunrui_cols]).dropna())
+        selected_sub = st.selectbox("小分類を選んでください", ["すべて"] + sorted(all_subcats))
+
+        # 小分類が1/2/3のどれかに入っていればOK
+        if selected_sub != "すべて":
+            filtered = filtered[filtered[shoubunrui_cols].apply(lambda row: selected_sub in row.values, axis=1)]
+
         st.write(f"該当件数：{len(filtered)}")
         for _, rec in filtered.iterrows():
             if "gid" in rec and pd.notna(rec["gid"]):
                 url = SHEET_BASE_URL + str(rec["gid"])
-                st.markdown(
-                    f'### 活動名：[ {rec["シート名"]} ]({url})'
-                )
+                st.markdown(f'### 活動名：[ {rec["シート名"]} ]({url})')
             else:
                 st.write(f'### 活動名: {rec["シート名"]}')
-            if "D7" in rec:
+            if "D7" in rec and rec["D7"]:
                 st.write(f'テーマ：{rec["D7"]}\n')
-            if "D17" in rec:
+            if "D17" in rec and rec["D17"]:
                 st.write(f'参加者の反応：{rec["D17"]}\n')
             st.write("---")
-    else:
-        st.warning("分類情報が見つかりません。目次シートに分類列を追加してください。")
