@@ -56,7 +56,7 @@ if st.session_state.search_flag and user_input:
             cond |= df[col].str.contains(user_input, na=False)
     results = df[cond]
     top3 = results.head(3)
-    others = results.iloc[3:10]
+    others = results.iloc[3:15]
 
     if not top3.empty:
         st.subheader("おすすめコンテンツ")
