@@ -101,6 +101,7 @@ elif page == "分類で探す":
     else:
         # 全大分類値をユニークで
         all_cats = pd.unique(pd.concat([df[col] for col in daibunrui_cols]).dropna())
+        all_cats = [cat for cat in all_cats if str(cat).strip() != ""]
         selected_cat = st.selectbox("大分類を選んでください", sorted(all_cats))
 
         # 大分類が1/2/3のどれかに入っていればOK
