@@ -30,10 +30,12 @@ df = load_index_sheet()
 st.title("活動サジェストチャット")
 st.write("どんな活動を探していますか？（例：自然系、工作、料理、実験、小学生、屋外 など）")
 
-user_input = st.text_input("キーワードを入力", "")
-search_btn = st.button("おすすめを表示")
+# 検索フォーム
+with st.form(key="search_form"):
+    user_input = st.text_input("キーワードを入力", "")
+    submit = st.form_submit_button("おすすめを表示")
 
-if search_btn and user_input:
+if submit and user_input:
     cond = (
         df["D7"].str.contains(user_input, na=False) |
         df["D17"].str.contains(user_input, na=False) |
@@ -44,7 +46,7 @@ if search_btn and user_input:
             cond |= df[col].str.contains(user_input, na=False)
     results = df[cond]
     top3 = results.head(3)
-    others = results.iloc[3:15]  # 12件まで
+    others = results.iloc[3:15]  # 12件
 
     if not top3.empty:
         st.subheader("おすすめコンテンツ")
@@ -62,7 +64,6 @@ if search_btn and user_input:
             st.write("---")
         st.subheader("その他の近いコンテンツ")
         if not others.empty:
-            # 活動名にリンクを付けて表示
             links = [
                 f'[{rec["シート名"]}]({SHEET_BASE_URL + str(rec["gid"])})'
                 for _, rec in others.iterrows()
