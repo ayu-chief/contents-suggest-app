@@ -25,8 +25,6 @@ def load_index_sheet():
     return df
 
 df = load_index_sheet()
-st.write("【目次シートの内容プレビュー】")
-st.dataframe(df.head())
 
 # --- サジェスト検索UI ---
 st.title("おすすめ活動サジェスト（目次シート参照）")
@@ -45,12 +43,10 @@ if search_btn and user_input:
     if not top3.empty:
         st.subheader("おすすめコンテンツ")
         for _, rec in top3.iterrows():
-            st.write(f'### {rec["シート名"]}' if "シート名" in rec else "")
-            for col in df.columns:
-                if "分類" in col and pd.notna(rec[col]):
-                    st.write(f'{col}: {rec[col]}')
-            if "D7" in rec: st.write(f'D7: {rec["D7"]}')
-            if "D17" in rec: st.write(f'D17: {rec["D17"]}')
+            # ラベル付きで3項目のみ表示
+            st.write(f'### 活動名: {rec["シート名"]}' if "シート名" in rec else "")
+            st.write(f'テーマ: {rec["D7"]}' if "D7" in rec else "")
+            st.write(f'実施方法: {rec["D15"]}' if "D15" in rec else "")
             st.write("---")
         if not others.empty:
             st.subheader("その他の近いコンテンツ")
