@@ -27,51 +27,94 @@ def load_index_sheet():
 
 df = load_index_sheet()
 
-st.title("活動サジェストチャット")
-st.write("どんな活動を探していますか？（例：自然、工作、料理、実験、屋外 など単語で入力）")
+# サイドバーでページ選択
+page = st.sidebar.selectbox(
+    "ページを選択してください",
+    ["活動サジェストチャット", "分類で探す"]
+)
 
-# 検索フォーム
-with st.form(key="search_form"):
+if page == "活動サジェストチャット":
+    st.title("活動サジェストチャット")
+    st.write("どんな活動を探していますか？（例：自然、工作、料理、実験、屋外 など単語で入力）")
+
     user_input = st.text_input("キーワードを入力", "")
-    submit = st.form_submit_button("おすすめを表示")
+    search_btn = st.button("おすすめを表示")
+    run_search = (search_btn or user_input) and user_input != ""
 
-if submit and user_input:
-    cond = (
-        df["D7"].str.contains(user_input, na=False) |
-        df["D17"].str.contains(user_input, na=False) |
-        df["シート名"].str.contains(user_input, na=False)
-    )
-    for col in df.columns:
-        if "分類" in col:
-            cond |= df[col].str.contains(user_input, na=False)
-    results = df[cond]
-    top3 = results.head(3)
-    others = results.iloc[3:15]  # 12件
+    if run_search:
+        cond = (
+            df["D7"].str.contains(user_input, na=False) |
+            df["D17"].str.contains(user_input, na=False) |
+            df["シート名"].str.contains(user_input, na=False)
+        )
+        for col in df.columns:
+            if "分類" in col:
+                cond |= df[col].str.contains(user_input, na=False)
+        results = df[cond]
+        top3 = results.head(3)
+        others = results.iloc[3:15]
 
-    if not top3.empty:
-        st.subheader("おすすめコンテンツ")
-        for _, rec in top3.iterrows():
-            # 活動名（リンク付き）
-            if "シート名" in rec and "gid" in rec:
+        if not top3.empty:
+            st.subheader("おすすめコンテンツ")
+            for _, rec in top3.iterrows():
+                # 活動名リンク
+                if "gid" in rec and pd.notna(rec["gid"]):
+                    url = SHEET_BASE_URL + str(rec["gid"])
+                    st.markdown(
+                        f'### 活動名：[ {rec["シート名"]} ]({url})'
+                    )
+                else:
+                    st.write(f'### 活動名: {rec["シート名"]}')
+                # テーマ＋改行
+                if "D7" in rec:
+                    st.write(f'テーマ：{rec["D7"]}\n')
+                # 参加者の反応＋改行
+                if "D17" in rec:
+                    st.write(f'参加者の反応：{rec["D17"]}\n')
+                st.write("---")
+            st.subheader("その他の近いコンテンツ")
+            if not others.empty:
+                # 活動名をクリックでシートを開く
+                links = [
+                    f"[{row['シート名']}]({SHEET_BASE_URL}{row['gid']})"
+                    for _, row in others.iterrows() if pd.notna(row["gid"])
+                ]
+                if links:
+                    st.markdown("、".join(links), unsafe_allow_html=True)
+                else:
+                    st.write("その他の近いコンテンツは見つかりませんでした。")
+            else:
+                st.write("その他の近いコンテンツは見つかりませんでした。")
+        else:
+            st.info("条件に合うおすすめが見つかりませんでした。検索ワードを変えてみてください。")
+    else:
+        st.write("上の検索欄に希望を入力して「おすすめを表示」ボタンを押してください。")
+
+elif page == "分類で探す":
+    st.title("分類で活動を一覧")
+    # ここでは「分類①」でグループ化する例
+    if "分類①" in df.columns:
+        categories = sorted(df["分類①"].dropna().unique())
+        selected_cat = st.selectbox("大分類を選んでください", categories)
+        filtered = df[df["分類①"] == selected_cat]
+        if "分類②" in df.columns:
+            subcats = sorted(filtered["分類②"].dropna().unique())
+            selected_sub = st.selectbox("小分類を選んでください", ["すべて"] + subcats)
+            if selected_sub != "すべて":
+                filtered = filtered[filtered["分類②"] == selected_sub]
+        st.write(f"該当件数：{len(filtered)}")
+        for _, rec in filtered.iterrows():
+            if "gid" in rec and pd.notna(rec["gid"]):
                 url = SHEET_BASE_URL + str(rec["gid"])
-                st.markdown(f'### 活動名：[{rec["シート名"]}]({url})')
-            # テーマ＋改行
+                st.markdown(
+                    f'### 活動名：[ {rec["シート名"]} ]({url})'
+                )
+            else:
+                st.write(f'### 活動名: {rec["シート名"]}')
             if "D7" in rec:
                 st.write(f'テーマ：{rec["D7"]}\n')
-            # 参加者の反応＋改行
             if "D17" in rec:
                 st.write(f'参加者の反応：{rec["D17"]}\n')
             st.write("---")
-        st.subheader("その他の近いコンテンツ")
-        if not others.empty:
-            links = [
-                f'[{rec["シート名"]}]({SHEET_BASE_URL + str(rec["gid"])})'
-                for _, rec in others.iterrows()
-            ]
-            st.write("、".join(links))
-        else:
-            st.write("その他の近いコンテンツは見つかりませんでした。")
     else:
-        st.info("条件に合うおすすめが見つかりませんでした。検索ワードを変えてみてください。")
-else:
-    st.write("上の検索欄に希望を入力して「おすすめを表示」ボタンを押してください。")
+        st.warning("分類情報が見つかりません。目次シートに分類列を追加してください。")
