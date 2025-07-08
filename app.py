@@ -28,7 +28,7 @@ def load_index_sheet():
 df = load_index_sheet()
 
 st.title("活動サジェストチャット")
-st.write("どんな活動を探していますか？（例：自然系、工作、料理、実験、小学生、屋外 など）")
+st.write("どんな活動を探していますか？（例：自然系、工作、料理、実験、屋外 など単語で入力）")
 
 # 検索フォーム
 with st.form(key="search_form"):
