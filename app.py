@@ -30,10 +30,23 @@ df = load_index_sheet()
 st.title("活動サジェストチャット")
 st.write("どんな活動を探していますか？（例：自然系、工作、料理、実験、小学生、屋外 など）")
 
-user_input = st.text_input("キーワードを入力", "")
-search_btn = st.button("おすすめを表示")
+# --- エンター押下でもボタンでも検索実行 ---
+if "search_flag" not in st.session_state:
+    st.session_state.search_flag = False
 
-if search_btn and user_input:
+def run_search():
+    st.session_state.search_flag = True
+
+user_input = st.text_input(
+    "キーワードを入力",
+    key="search_input",
+    on_change=run_search
+)
+search_btn = st.button("おすすめを表示", on_click=run_search)
+
+if st.session_state.search_flag and user_input:
+    st.session_state.search_flag = False  # 検索のたびにフラグリセット
+
     cond = (
         df["D7"].str.contains(user_input, na=False) |
         df["D17"].str.contains(user_input, na=False) |
@@ -49,21 +62,34 @@ if search_btn and user_input:
     if not top3.empty:
         st.subheader("おすすめコンテンツ")
         for _, rec in top3.iterrows():
+            # 活動名
             st.write(f'### 活動名: {rec["シート名"]}' if "シート名" in rec else "")
-            # テーマ＋改行
+            # テーマ＋改行＋リンク
             if "D7" in rec:
-                st.markdown(f'テーマ：{rec["D7"]}<br>', unsafe_allow_html=True)
+                sheet_url = SHEET_BASE_URL + str(rec["gid"]) if "gid" in rec and pd.notna(rec["gid"]) else ""
+                if sheet_url:
+                    st.markdown(
+                        f'テーマ：{rec["D7"]}<br>'
+                        f'[この活動のシートを開く]({sheet_url})',
+                        unsafe_allow_html=True
+                    )
+                else:
+                    st.markdown(f'テーマ：{rec["D7"]}<br>', unsafe_allow_html=True)
             # 参加者の反応＋改行
             if "D17" in rec:
                 st.markdown(f'参加者の反応：{rec["D17"]}<br>', unsafe_allow_html=True)
-            # シートへのリンク
-            if "gid" in rec and pd.notna(rec["gid"]):
-                url = SHEET_BASE_URL + str(rec["gid"])
-                st.markdown(f'[この活動のシートを開く]({url})')
             st.write("---")
         if not others.empty:
             st.subheader("その他の近いコンテンツ")
-            st.write("、".join(others["シート名"].tolist()))
+            # 活動名（リンク付き）で出す
+            links = []
+            for _, rec in others.iterrows():
+                if "gid" in rec and pd.notna(rec["gid"]):
+                    sheet_url = SHEET_BASE_URL + str(rec["gid"])
+                    links.append(f'[{rec["シート名"]}]({sheet_url})')
+                else:
+                    links.append(rec["シート名"])
+            st.markdown("、".join(links), unsafe_allow_html=True)
     else:
         st.info("条件に合うおすすめが見つかりませんでした。検索ワードを変えてみてください。")
 else:
