@@ -194,13 +194,13 @@ def load_contents_for_search():
     for ws in sheets:
         sheet_name = ws.title
         gid = ws.id
-        d5 = safe_acell(ws, "D5")
         d7 = safe_acell(ws, "D7")
+        d17 = safe_acell(ws, "D17")
         data.append({
             "シート名": sheet_name,
             "gid": gid,
-            "D5": d5,
             "D7": d7,
+            "D17": d17,
         })
     return pd.DataFrame(data)
 
@@ -214,8 +214,9 @@ search_btn = st.button("おすすめを表示")
 if search_btn and user_input:
     recs = []
     for _, row in contents_df.iterrows():
-        cond = (user_input in str(row["cat1"])) or (user_input in str(row["cat2"])) \
-             or (user_input in str(row["D5"])) or (user_input in str(row["D15"])) or (user_input in str(row["D17"])) \
+        # ↓ここを「分類①」「分類②」に変更
+        cond = (user_input in str(row["分類①"])) or (user_input in str(row["分類②"])) \
+             or (user_input in str(row["D7"])) or (user_input in str(row["D17"])) \
              or (user_input in str(row["シート名"]))
         if cond:
             recs.append(row)
@@ -225,10 +226,9 @@ if search_btn and user_input:
         st.subheader("おすすめコンテンツ")
         for rec in top3:
             st.write(f'### {rec["シート名"]}')
-            st.write(f'第一階層: {rec["cat1"]}')
-            st.write(f'第二階層: {rec["cat2"]}')
-            st.write(f'D5: {rec["D5"]}')
-            st.write(f'D15: {rec["D15"]}')
+            st.write(f'第一階層: {rec["分類①"]}')
+            st.write(f'第二階層: {rec["分類②"]}')
+            st.write(f'D7: {rec["D7"]}')
             st.write(f'D17: {rec["D17"]}')
             sheet_url = SHEET_BASE_URL + str(rec["gid"])
             st.markdown(f'<a href="{sheet_url}" target="_blank" style="font-size:18px; color:blue; text-decoration:underline;">詳細を見る</a>', unsafe_allow_html=True)
