@@ -206,6 +206,9 @@ def load_contents_for_search():
 
 contents_df = load_contents_for_search()
 
+# カラム名を確認！
+st.write("カラム名一覧: ", contents_df.columns)
+
 # --- サジェスト検索UI ---
 st.title("おすすめ活動サジェスト")
 user_input = st.text_input("どんな活動を探していますか？（例：自然系、小学生向け、運動など）")
