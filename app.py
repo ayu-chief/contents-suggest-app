@@ -15,7 +15,7 @@ creds = Credentials.from_service_account_info(SERVICE_ACCOUNT_INFO, scopes=scope
 gc = gspread.authorize(creds)
 
 # ---------------------------
-# 目次シートを読み込む関数
+# 目次シートを読み込む関数　←★これを必ず最初に定義！
 # ---------------------------
 @st.cache_data
 def load_index_sheet():
@@ -53,9 +53,7 @@ def sync_index_sheet():
                 d17 = w.acell("D17").value or ""
             except Exception:
                 pass
-            # カラム数に応じて動的に対応
             num_cols = len(df.columns)
-            # 1:シート名, 2:D7, 3:D17, 4~8:空欄, 9:gid
             new_row = [w.title, d7, d17] + [""] * (num_cols - 4) + [w.id]
             ws.append_row(new_row, value_input_option="USER_ENTERED")
             add_count += 1
