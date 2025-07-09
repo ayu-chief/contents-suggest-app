@@ -17,17 +17,29 @@ gc = gspread.authorize(creds)
 # ---------------------------
 # 目次シートを読み込む関数
 # ---------------------------
+@st.cache_data
+def load_index_sheet():
+    sh = gc.open_by_key(SPREADSHEET_ID)
+    ws = sh.worksheet("目次")
+    data = ws.get_all_values()
+    df = pd.DataFrame(data[1:], columns=data[0])
+    # gid列がなければ追加（自動付与）
+    if "gid" not in df.columns:
+        sheet_map = {ws.title: ws.id for ws in sh.worksheets()}
+        df["gid"] = df["シート名"].map(sheet_map)
+    return df
+
+# ---------------------------
+# 目次シートを自動同期（新シート追加）
+# ---------------------------
 def sync_index_sheet():
     sh = gc.open_by_key(SPREADSHEET_ID)
     ws = sh.worksheet("目次")
     data = ws.get_all_values()
     df = pd.DataFrame(data[1:], columns=data[0])
-    # 目次のシート名セット
     already = set(df["シート名"])
-    # 全シート取得（目次シート自身は除外）
     all_ws = [w for w in sh.worksheets() if w.title != "目次"]
     add_count = 0
-
     for w in all_ws:
         if w.title not in already:
             # D7/D17セル内容を取得して転記
@@ -41,8 +53,9 @@ def sync_index_sheet():
                 d17 = w.acell("D17").value or ""
             except Exception:
                 pass
-            # 目次のカラム数に合わせて空欄補完
+            # カラム数に応じて動的に対応
             num_cols = len(df.columns)
+            # 1:シート名, 2:D7, 3:D17, 4~8:空欄, 9:gid
             new_row = [w.title, d7, d17] + [""] * (num_cols - 4) + [w.id]
             ws.append_row(new_row, value_input_option="USER_ENTERED")
             add_count += 1
@@ -65,12 +78,9 @@ st.sidebar.markdown("---")  # 区切り線
 
 # 管理者メニュー（サイドバー下部に）
 with st.sidebar.expander("管理者メニュー", expanded=False):
-    if st.button("目次を最新に更新"):
-        added = update_index_sheet()
-        if added:
-            st.success(f"{added}件の新しいシートを目次に追加しました！")
-        else:
-            st.info("新しいシートはありませんでした。")
+    if st.button("新しいシートを目次に追加（同期）", key="add_new_sheets_to_index"):
+        n = sync_index_sheet()
+        st.success(f"{n}件の新しいシートを目次に追加しました！")
 
 # ---------------------------
 # チャットで探すページ
@@ -83,8 +93,7 @@ if page == "チャットで探す":
         </div>
         ''',
         unsafe_allow_html=True
-    )
-    st.title("活動サジェストチャット")
+    )st.title("活動サジェストチャット")
     st.write("どんな活動を探していますか？（例：自然、工作、料理、実験、屋外 など単語で入力）")
 
     user_input = st.text_input("キーワードを入力", "")
