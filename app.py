@@ -60,6 +60,46 @@ def sync_index_sheet():
     return add_count
 
 # ---------------------------
+# 目次の分類を各シートのM/N列に転記
+# ---------------------------
+def write_categories_to_sheets():
+    sh = gc.open_by_key(SPREADSHEET_ID)
+    ws_index = sh.worksheet("目次")
+    index_data = ws_index.get_all_values()
+    index_df = pd.DataFrame(index_data[1:], columns=index_data[0])
+
+    count = 0
+    for _, row in index_df.iterrows():
+        sheet_name = row["シート名"]
+        try:
+            ws = sh.worksheet(sheet_name)
+        except Exception:
+            continue  # シートがなければスキップ
+
+        daibun1 = row.get("大分類1", "")
+        daibun2 = row.get("大分類2", "")
+        daibun3 = row.get("大分類3", "")
+        shoubun1 = row.get("小分類1", "")
+        shoubun2 = row.get("小分類2", "")
+        shoubun3 = row.get("小分類3", "")
+
+        try:
+            ws.update_acell("M1", "大分類")
+            ws.update_acell("N1", "小分類")
+            ws.update_acell("M3", daibun1)
+            ws.update_acell("M5", daibun2)
+            ws.update_acell("M7", daibun3)
+            ws.update_acell("N3", shoubun1)
+            ws.update_acell("N5", shoubun2)
+            ws.update_acell("N7", shoubun3)
+            count += 1
+        except Exception as e:
+            print(f"{sheet_name} 書き込み失敗: {e}")
+            continue
+
+    return count
+
+# ---------------------------
 # データフレーム取得
 # ---------------------------
 df = load_index_sheet()
@@ -79,6 +119,9 @@ with st.sidebar.expander("管理者メニュー", expanded=False):
     if st.button("新しいシートを目次に追加（同期）", key="add_new_sheets_to_index"):
         n = sync_index_sheet()
         st.success(f"{n}件の新しいシートを目次に追加しました！")
+    if st.button("全シートに分類を転記", key="write_categories"):
+        n = write_categories_to_sheets()
+        st.success(f"{n}シートに分類情報を転記しました！")
 
 # ---------------------------
 # チャットで探すページ
