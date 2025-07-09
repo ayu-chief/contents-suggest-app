@@ -74,7 +74,7 @@ with st.sidebar.expander("管理者メニュー", expanded=False):
 # ---------------------------
 # チャットで探すページ
 # ---------------------------
-if page == "活動サジェストチャット":
+if page == "チャットで探す":
     st.markdown(
         '''
         <div style="color: #888888; font-size:15px; margin-bottom:15px; padding:6px 0;">
