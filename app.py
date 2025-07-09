@@ -91,7 +91,8 @@ if page == "チャットで探す":
         </div>
         ''',
         unsafe_allow_html=True
-    )st.title("活動サジェストチャット")
+    )
+    st.title("活動サジェストチャット")
     st.write("どんな活動を探していますか？（例：自然、工作、料理、実験、屋外 など単語で入力）")
 
     user_input = st.text_input("キーワードを入力", "")
