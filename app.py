@@ -76,9 +76,12 @@ with st.sidebar.expander("管理者メニュー", expanded=False):
 # ---------------------------
 if page == "活動サジェストチャット":
     st.markdown(
-        '<div style="color: #666; font-size: 14px; margin-bottom: 10px;">'
-        '※画面左のサイドバーからページ切替・管理ができます'
-        '</div>', unsafe_allow_html=True
+        '''
+        <div style="color: #888888; font-size:15px; margin-bottom:15px; padding:6px 0;">
+        <em>※画面左のサイドバーからページ切替・管理ができます</em>
+        </div>
+        ''',
+        unsafe_allow_html=True
     )
     st.title("活動サジェストチャット")
     st.write("どんな活動を探していますか？（例：自然、工作、料理、実験、屋外 など単語で入力）")
