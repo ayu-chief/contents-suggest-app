@@ -14,26 +14,72 @@ scopes = [
 creds = Credentials.from_service_account_info(SERVICE_ACCOUNT_INFO, scopes=scopes)
 gc = gspread.authorize(creds)
 
+# ---------------------------
+# 目次シートを読み込む関数
+# ---------------------------
 @st.cache_data
 def load_index_sheet():
     sh = gc.open_by_key(SPREADSHEET_ID)
     ws = sh.worksheet("目次")
     data = ws.get_all_values()
     df = pd.DataFrame(data[1:], columns=data[0])
+    # gid列がなければ追加（自動付与）
     if "gid" not in df.columns:
         sheet_map = {ws.title: ws.id for ws in sh.worksheets()}
         df["gid"] = df["シート名"].map(sheet_map)
     return df
 
+# ---------------------------
+# 目次シートを自動同期（新シート追加）
+# ---------------------------
+def sync_index_sheet():
+    sh = gc.open_by_key(SPREADSHEET_ID)
+    ws = sh.worksheet("目次")
+    data = ws.get_all_values()
+    df = pd.DataFrame(data[1:], columns=data[0])
+    # 目次のシート名セット
+    already = set(df["シート名"])
+    # 全シート取得（目次と管理用シート除外）
+    all_ws = [w for w in sh.worksheets() if w.title != "目次"]
+    add_count = 0
+    for w in all_ws:
+        if w.title not in already:
+            # D7/D17等は空欄でよい
+            new_row = [w.title, "", "", "", "", "", "", "", "", w.id]
+            ws.append_row(new_row, value_input_option="USER_ENTERED")
+            add_count += 1
+    return add_count
+
+# ---------------------------
+# データフレーム取得
+# ---------------------------
 df = load_index_sheet()
 
-# サイドバーでページ選択
+# ---------------------------
+# サイドバー（ページ選択 & 管理メニュー）
+# ---------------------------
 page = st.sidebar.selectbox(
     "ページを選択してください",
     ["チャットで探す", "分類で探す"]
 )
 
-if page == "チャットで探す":
+st.sidebar.markdown("---")  # 区切り線
+
+# 管理者メニュー（サイドバー下部に）
+with st.sidebar.expander("管理者メニュー", expanded=False):
+    if st.button("新しいシートを目次に追加（同期）", key="add_new_sheets_to_index"):
+        n = sync_index_sheet()
+        st.success(f"{n}件の新しいシートを目次に追加しました！")
+
+# ---------------------------
+# チャットで探すページ
+# ---------------------------
+if page == "活動サジェストチャット":
+    st.markdown(
+        '<div style="color: #666; font-size: 14px; margin-bottom: 10px;">'
+        '※画面左のサイドバーからページ切替・管理ができます'
+        '</div>', unsafe_allow_html=True
+    )
     st.title("活動サジェストチャット")
     st.write("どんな活動を探していますか？（例：自然、工作、料理、実験、屋外 など単語で入力）")
 
@@ -88,18 +134,21 @@ if page == "チャットで探す":
         else:
             st.info("条件に合うおすすめが見つかりませんでした。検索ワードを変えてみてください。")
     else:
-        st.write("上の検索欄に入力して「おすすめを表示」ボタンを押してください。")
+        st.write("上の検索欄に希望を入力して「おすすめを表示」ボタンを押してください。")
 
+# ---------------------------
+# 分類で探すページ
+# ---------------------------
 elif page == "分類で探す":
     st.title("分類で活動を一覧")
-    # 「大分類」「小分類」の全カラム取得
+
     daibunrui_cols = [c for c in df.columns if c.startswith("大分類")]
     shoubunrui_cols = [c for c in df.columns if c.startswith("小分類")]
 
     if not daibunrui_cols or not shoubunrui_cols:
         st.warning("大分類・小分類のカラムが見つかりません。")
     else:
-        # 全大分類値をユニークで
+        # 全大分類値をユニークで空白除外
         all_cats = pd.unique(pd.concat([df[col] for col in daibunrui_cols]).dropna())
         all_cats = [cat for cat in all_cats if str(cat).strip() != ""]
         selected_cat = st.selectbox("大分類を選んでください", sorted(all_cats))
@@ -107,12 +156,11 @@ elif page == "分類で探す":
         # 大分類が1/2/3のどれかに入っていればOK
         filtered = df[df[daibunrui_cols].apply(lambda row: selected_cat in row.values, axis=1)]
 
-        # 全小分類値（大分類絞り込み後）
+        # 全小分類値（大分類絞り込み後）空白除外
         all_subcats = pd.unique(pd.concat([filtered[col] for col in shoubunrui_cols]).dropna())
-        all_subcats = [cat for cat in all_subcats if str(cat).strip() != ""]  # ←★空白除外
+        all_subcats = [cat for cat in all_subcats if str(cat).strip() != ""]
         selected_sub = st.selectbox("小分類を選んでください", ["すべて"] + sorted(all_subcats))
 
-        # 小分類が1/2/3のどれかに入っていればOK
         if selected_sub != "すべて":
             filtered = filtered[filtered[shoubunrui_cols].apply(lambda row: selected_sub in row.values, axis=1)]
 
